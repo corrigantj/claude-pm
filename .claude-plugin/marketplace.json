@@ -1,0 +1,17 @@
+{
+  "name": "claude-pm",
+  "owner": {
+    "name": "Travis Corrigan",
+    "email": "travis@makeheavymetal.com"
+  },
+  "metadata": {
+    "description": "GitHub Issues-based project management for Claude Code: PRD-to-delivery pipeline with parallel agent execution"
+  },
+  "plugins": [
+    {
+      "name": "claude-pm",
+      "source": "./",
+      "description": "GitHub Issues-based project management for Claude Code: PRD-to-delivery pipeline with parallel agent execution"
+    }
+  ]
+}

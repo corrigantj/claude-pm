@@ -1,0 +1,12 @@
+{
+  "name": "claude-pm",
+  "description": "GitHub Issues-based project management for Claude Code: PRD-to-delivery pipeline with parallel agent execution",
+  "version": "0.1.0",
+  "author": {
+    "name": "Travis Corrigan",
+    "email": "travis@matterflower.com"
+  },
+  "repository": "https://github.com/traviscorrigan/claude-pm",
+  "license": "MIT",
+  "keywords": ["project-management", "github-issues", "parallel-agents", "worktrees", "skills"]
+}

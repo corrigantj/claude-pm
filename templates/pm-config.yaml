@@ -1,0 +1,50 @@
+# claude-pm configuration
+# Place this file at .github/pm-config.yaml in your project repository.
+# All values shown are defaults and can be omitted if unchanged.
+
+# Project identity (auto-detected from git remote if omitted)
+project:
+  owner: ""        # GitHub org or username
+  repo: ""         # Repository name
+  base_branch: ""  # Default branch (auto-detected)
+
+# Agent execution
+agents:
+  max_parallel: 3  # Maximum concurrent pm-implementer agents
+  model: opus      # Model for spawned agents (opus | sonnet)
+
+# Branch naming
+branches:
+  prefix: pm       # Branch prefix: pm/{issue-number}-{slug}
+
+# Worktree management
+worktrees:
+  directory: .worktrees  # Worktree root relative to repo
+
+# Approval gates — require human confirmation before proceeding
+approval_gates:
+  before_dispatch: false        # Confirm batch before spawning agents
+  before_merge: false           # Confirm each PR merge
+  before_close_milestone: false # Confirm before closing milestone
+
+# Merge strategy
+merge:
+  strategy: squash   # squash | merge | rebase
+  delete_branch: true
+
+# Build/test commands (auto-detected from package.json, Cargo.toml, etc. if omitted)
+commands:
+  test: ""   # e.g., "npm test", "cargo test", "pytest"
+  lint: ""   # e.g., "npm run lint", "cargo clippy"
+  build: ""  # e.g., "npm run build", "cargo build"
+
+# Additional labels beyond the default taxonomy
+labels: []
+  # - name: "area/frontend"
+  #   color: "c5def5"
+  #   description: "Frontend changes"
+
+# Custom template paths (relative to repo root)
+templates:
+  issue_body: ""  # Override default issue body template
+  pr_body: ""     # Override default PR body template

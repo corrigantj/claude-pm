@@ -23,8 +23,15 @@ GitHub Issues are the durable state machine — session crashes are fully recove
 
 ### Claude Code (via Plugin Marketplace)
 
-```bash
-/plugin install claude-pm
+```
+/plugin marketplace add corrigantj/claude-pm
+/plugin install claude-pm@claude-pm
+```
+
+To update after new releases:
+
+```
+/plugin marketplace update claude-pm
 ```
 
 ### Manual Installation
@@ -32,7 +39,7 @@ GitHub Issues are the durable state machine — session crashes are fully recove
 Clone this repository and register it as a Claude Code plugin:
 
 ```bash
-git clone https://github.com/traviscorrigan/claude-pm.git
+git clone https://github.com/corrigantj/claude-pm.git
 cd your-project
 # Add to your project's .claude/plugins or global plugins
 ```

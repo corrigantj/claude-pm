@@ -1,16 +1,17 @@
 # claude-pm
 
-GitHub Issues-based project management for Claude Code. Turn PRDs into GitHub Milestones + Issues, dispatch parallel implementation agents (each in its own git worktree), track progress via a live dashboard, and merge PRs in dependency order.
+GitHub-native project management for Claude Code. Create wiki PRDs with versioned epics, structure work into GitHub Milestones with story/task sub-issue hierarchies, dispatch parallel implementation agents (each in its own git worktree branching from a feature branch), manage the PR review cycle with a two-wave model, and calibrate future estimates with token-based sizing.
 
 ## How It Works
 
 1. **You brainstorm** a design and save it as a PRD
-2. **`pm:structure`** converts the PRD into a GitHub Milestone with Issues (Gherkin acceptance criteria, dependency annotations, T-shirt sizing)
-3. **`pm:dispatch`** spawns parallel pm-implementer agents — each in its own worktree, implementing with TDD, creating PRs
-4. **`pm:status`** shows a live dashboard from GitHub state (works across session crashes)
-5. **`pm:integrate`** merges PRs in dependency order with test verification between each merge, then closes the milestone
+2. **`claude-pm:pm-structure`** creates a wiki PRD page, a meta page, a GitHub Milestone with Issues (stories, tasks, bugs), and a feature branch
+3. **`claude-pm:pm-dispatch`** spawns parallel pm-implementer agents — each in its own worktree, branching from the feature branch, implementing with TDD, creating task PRs
+4. **`claude-pm:pm-status`** shows a live dashboard from GitHub state (works across session crashes)
+5. **`claude-pm:pm-review`** polls task PRs for review status, merges approved PRs into the feature branch, and captures micro-retros
+6. **`claude-pm:pm-integrate`** merges the feature branch to main, creates a retrospective wiki page, calibrates sizing estimates, and closes the milestone
 
-GitHub Issues are the durable state machine — session crashes are fully recoverable.
+GitHub Issues + Wiki are the durable state machine — session crashes are fully recoverable.
 
 ## Prerequisites
 
@@ -18,6 +19,7 @@ GitHub Issues are the durable state machine — session crashes are fully recove
 - GitHub MCP server configured (for issue/PR/milestone management)
 - `gh` CLI authenticated (`gh auth status`)
 - A repository with a GitHub remote
+- **Wiki enabled** on the GitHub repository
 
 ## Installation
 
@@ -54,16 +56,18 @@ Use superpowers brainstorming to design your project, then save to `docs/plans/`
 Let's brainstorm a user authentication system
 ```
 
-### 2. Structure into GitHub Issues
+### 2. Structure into Wiki + GitHub Issues
 
 ```
 Use pm:structure to break down docs/plans/auth-system.md
 ```
 
 This creates:
-- A GitHub Milestone
-- Issues with Gherkin acceptance criteria and dependency annotations
-- Labels (`type/`, `size/`, `status/`, `priority/`)
+- A wiki PRD page and meta page
+- A GitHub Milestone with a feature branch
+- Story issues with task/bug sub-issues
+- Gherkin acceptance criteria and dependency annotations
+- Labels (`epic:`, `size:`, `status:`, `priority:`)
 
 ### 3. Dispatch Implementation Agents
 
@@ -73,8 +77,9 @@ Use pm:dispatch to start implementing
 
 This spawns parallel agents (default: 3), each:
 - Working in its own git worktree
+- Branching from the feature branch
 - Following TDD (tests first from Gherkin scenarios)
-- Creating a PR when done
+- Creating a task PR targeting the feature branch
 
 ### 4. Check Progress
 
@@ -82,25 +87,42 @@ This spawns parallel agents (default: 3), each:
 What's the project status?
 ```
 
-Dashboard shows: progress bar, issue categorization, CI status, blockers, next actions.
+Dashboard shows: progress bar, sub-issue grouping by story, CI status, blockers, next actions.
 
-### 5. Merge and Ship
+### 5. Review and Merge Task PRs
 
 ```
-Use pm:integrate to merge everything
+Use pm:review to check on task PRs
 ```
 
-Merges PRs in topological order, verifies tests after each merge, closes the milestone.
+Polls task PRs for review status, merges approved PRs into the feature branch, and captures micro-retros for each completed task.
+
+### 6. Integrate and Ship
+
+```
+Use pm:integrate to merge the feature branch
+```
+
+Merges the feature branch to main, creates a retrospective wiki page, calibrates token-based sizing estimates, and closes the milestone.
 
 ## Configuration
 
 Create `.github/pm-config.yaml` in your project repository:
 
 ```yaml
+# claude-pm v2 configuration
+# All values shown are defaults and can be omitted if unchanged.
+
+# Project identity (auto-detected from git remote if omitted)
+project:
+  owner: ""
+  repo: ""
+  base_branch: ""
+
 # Agent execution
 agents:
   max_parallel: 3    # Max concurrent agents
-  model: opus        # Model for agents
+  model: opus        # Model for agents (opus | sonnet)
 
 # Branch naming
 branches:
@@ -115,6 +137,7 @@ approval_gates:
   before_dispatch: false
   before_merge: false
   before_close_milestone: false
+  before_wiki_update: false
 
 # Merge strategy
 merge:
@@ -126,56 +149,127 @@ commands:
   test: ""
   lint: ""
   build: ""
+
+# Additional labels beyond the default taxonomy
+labels: []
+
+# Wiki management
+wiki:
+  directory: .wiki    # Wiki clone location relative to repo root
+  auto_clone: true    # Automatically clone the wiki repo on first use
+
+# Epics
+epics:
+  naming: kebab-case  # kebab-case | snake_case | camelCase
+
+# Validation
+validation:
+  enabled: true   # Run validation checks
+  strict: false   # Treat warnings as errors
+
+# Review polling
+review:
+  polling_interval: 60    # Seconds between review-state polls
+  polling_model: haiku    # Model used for polling (haiku | sonnet)
+  require_codeowners: false
+
+# Token-based sizing
+sizing:
+  metric: tokens   # tokens | lines | files
+  buckets:
+    xs:
+      lower: 1000
+      upper: 10000
+      description: "Trivial change, single file"
+    s:
+      lower: 10000
+      upper: 50000
+      description: "Small feature, few files"
+    m:
+      lower: 50000
+      upper: 200000
+      description: "Moderate feature, multiple files"
+    l:
+      lower: 200000
+      upper: 500000
+      description: "Large feature, significant scope"
+    xl:
+      lower: 500000
+      upper: null
+      description: "Must be split — too large for one agent session"
 ```
 
 All values have sensible defaults. The file is optional.
+
+## Architecture
+
+### Two-Wave PR Model
+
+Task PRs target the feature branch (wave 1, managed by `pm-review`). Once all tasks are merged, the feature branch is merged to main (wave 2, managed by `pm-integrate`). This isolates in-progress work from the main branch and enables parallel development without conflicts.
+
+### Wiki Management
+
+claude-pm maintains a project wiki with three page types:
+- **PRD pages** — living design documents with a lifecycle: Draft, In Review, Active, Approved, Superseded
+- **Meta pages** — index pages linking milestones, issues, and PRDs for an epic
+- **Retro pages** — retrospective summaries created during pm-integrate with sizing calibration data
+
+### Versioned Epics
+
+Epics use lower-kebab-case naming with semantic versioning: `{epic}-v{Major}.{Minor}`. This allows multiple versions of the same epic to coexist (e.g., `auth-system-v1.0` and `auth-system-v2.0`), with wiki pages and milestones scoped to each version.
+
+### Token-Based Sizing
+
+Issues are sized based on estimated token consumption, configured as buckets in `.github/pm-config.yaml`. During `pm-integrate`, actual token usage is compared against estimates, and the sizing calibration is updated in the retrospective wiki page. This feedback loop improves future estimates.
+
+### Label Taxonomy
+
+Labels use a `:` delimiter with standardized prefixes:
+- `epic:` — associates issues with a versioned epic
+- `priority:` — urgency (critical, high, medium, low)
+- `agent:` — tracks which agent is working on an issue
+- `meta:` — metadata labels (e.g., `meta:story`, `meta:task`, `meta:bug`)
+- `size:` — token-based sizing (xs, s, m, l, xl)
+- `status:` — workflow state (ready, in-progress, in-review, done, blocked)
+
+### Sub-Issue Hierarchy
+
+Work is organized as stories containing task and bug sub-issues. Stories represent product-level requirements with Gherkin acceptance criteria. Tasks and bugs are implementation-level work items linked to their parent story via `<!-- pm:parent #N -->` comments.
 
 ## Skill Reference
 
 | Skill | Purpose |
 |-------|---------|
-| `claude-pm:using-pm` | Gateway — routes to PM skills based on intent |
-| `claude-pm:pm-structure` | Convert PRD → GitHub Milestone + Issues |
+| `claude-pm:using-pm` | Gateway — kicks off brainstorming, routes to PM skills based on intent |
+| `claude-pm:pm-structure` | Convert PRD into Wiki pages + Milestone + Issues + feature branch |
 | `claude-pm:pm-dispatch` | Spawn parallel agents for ready issues |
-| `claude-pm:pm-status` | Live progress dashboard from GitHub |
-| `claude-pm:pm-integrate` | Merge PRs in dependency order |
-
-## Architecture
-
-**State machine:** GitHub Issues (labels track status: `ready` → `in-progress` → `in-review` → `done`)
-
-**Dependencies:** HTML comments in issue bodies: `<!-- pm:blocked-by #12, #15 -->` — machine-parseable, invisible to readers
-
-**Parallelism:** Each agent gets its own git worktree and branch. File overlap detection prevents merge conflicts.
-
-**Recovery:** `pm:status` reconstructs full project state from GitHub. No conversation memory needed.
-
-**Context budget:** The coordinator session stays under ~113k/200k tokens for a 10-issue project. Each agent gets its own fresh 200k window.
+| `claude-pm:pm-status` | Live progress dashboard from GitHub state |
+| `claude-pm:pm-review` | Poll task PRs, merge into feature branch, capture micro-retros |
+| `claude-pm:pm-integrate` | Merge feature branch to main, create retro, calibrate sizing |
 
 ## Plugin Structure
 
 ```
 claude-pm/
-├── .claude-plugin/plugin.json   # Plugin metadata
-├── hooks/
-│   ├── hooks.json               # SessionStart hook registration
-│   └── session-start.sh         # Injects using-pm skill on startup
-├── skills/
-│   ├── using-pm/SKILL.md        # Gateway skill
-│   ├── pm-structure/
-│   │   ├── SKILL.md             # PRD → Issues process
-│   │   ├── issue-body-template.md
-│   │   ├── pr-body-template.md
-│   │   └── gherkin-guide.md
-│   ├── pm-dispatch/
-│   │   ├── SKILL.md             # Agent dispatch process
-│   │   └── implementer-prompt.md
-│   ├── pm-status/SKILL.md       # Progress dashboard
-│   └── pm-integrate/SKILL.md    # Merge + close process
-├── agents/
-│   └── pm-implementer.md        # Implementation agent definition
-├── templates/
-│   └── pm-config.yaml           # Default configuration
+├── .claude-plugin/plugin.json     # Plugin metadata (v0.2.0)
+├── hooks/                         # SessionStart hook injects using-pm skill
+├── skills/                        # 6 skills: using-pm, pm-structure, pm-dispatch, pm-status, pm-review, pm-integrate
+│   ├── using-pm/                  # Gateway router — brainstorming entry, capability detection
+│   ├── pm-structure/              # PRD → Wiki + Milestone + Issues + feature branch
+│   │   ├── story-template.md      # Product story template
+│   │   ├── task-template.md       # Dev task sub-issue template
+│   │   ├── bug-template.md        # Bug sub-issue template
+│   │   ├── prd-template.md        # Wiki PRD page template
+│   │   ├── meta-template.md       # Wiki meta page template
+│   │   ├── pr-body-template.md    # PR body template
+│   │   └── gherkin-guide.md       # BDD scenario writing guide
+│   ├── pm-dispatch/               # Spawn parallel agents on feature branch
+│   ├── pm-status/                 # Progress dashboard with sub-issue grouping
+│   ├── pm-review/                 # Task PR polling, merge to feature branch, micro-retros
+│   └── pm-integrate/              # Feature→main PR, retro, wiki update, calibration
+│       └── retro-template.md      # Retrospective wiki page template
+├── agents/pm-implementer.md       # Subordinate agent: 10-phase TDD workflow
+├── templates/pm-config.yaml       # Configuration schema with sizing buckets
 ├── CLAUDE.md
 ├── LICENSE
 └── README.md

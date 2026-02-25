@@ -1,6 +1,6 @@
 ---
 name: pm-status
-description: Use anytime to view project progress — builds a dashboard from GitHub Issue and PR state, categorizes by status, shows blockers and CI results, enables session crash recovery
+description: View project progress with sub-issue grouping under parent stories, wiki links, feature branch awareness — builds a dashboard from GitHub Issue and PR state, categorizes by status, shows blockers and CI results, enables session crash recovery
 ---
 
 # pm-status — Progress Dashboard
@@ -24,6 +24,11 @@ mcp__github__list_issues with owner, repo (both OPEN and CLOSED state)
 Filter to the target milestone. For each issue, collect:
 - Number, title, state (open/closed), labels, assignee
 - Parse `<!-- pm:blocked-by #N, #M -->` from body
+- Parse `<!-- pm:parent #NN -->` from body to build parent→child relationships
+
+For each story issue (labeled `type:story`), also fetch its sub-issues (tasks and bugs). Build a map of parent story → child tasks/bugs using the `<!-- pm:parent #NN -->` comment parsed from each task/bug body.
+
+**Skip `meta:ignore` issues** — exclude them from the dashboard entirely.
 
 If no milestone is specified, find the most recent open milestone:
 ```bash
@@ -36,25 +41,36 @@ Categorize each issue into exactly one bucket based on labels and state:
 
 | Bucket | Criteria | Display |
 |--------|----------|---------|
-| **Done** | Closed + `status/done` label | Checkmark |
-| **In Review** | Open + `status/in-review` label | Arrow-right |
-| **In Progress** | Open + `status/in-progress` label | Spinner |
-| **Blocked** | Open + `status/blocked` label | X |
-| **Ready** | Open + `status/ready` label + all deps resolved | Circle |
+| **Done** | Closed + `status:done` label | Checkmark |
+| **In Review** | Open + `status:in-review` label | Arrow-right |
+| **In Progress** | Open + `status:in-progress` label | Spinner |
+| **Blocked** | Open + `status:blocked` label | X |
+| **Ready** | Open + `status:ready` label + all deps resolved | Circle |
 | **Pending** | Open + deps unresolved (no actionable status) | Dot |
 
-If an issue's labels conflict (e.g., both `status/ready` and `status/blocked`), use the highest-priority bucket: Blocked > In Progress > In Review > Ready > Pending.
+If an issue's labels conflict (e.g., both `status:ready` and `status:blocked`), use the highest-priority bucket: Blocked > In Progress > In Review > Ready > Pending.
+
+**Special label handling:**
+- `meta:ignore` — skip the issue from display entirely (already filtered in Step 1)
+- `meta:mustread` — do NOT place in a status bucket; collect separately for the "Context Documents" section
 
 ### Step 3: Fetch PR Status for In-Review Issues
 
-For each issue labeled `status/in-review`:
+For each issue labeled `status:in-review`:
 
 1. Find the linked PR (search for PRs mentioning `Closes #{issue_number}` or with branch name matching `pm/{issue_number}-*`)
-2. Fetch CI status:
+2. PRs now target the **feature branch** (e.g., `feature/{epic}-v{Major}`), not `main`. Verify the PR base branch is the feature branch.
+3. Fetch CI status:
    ```
    mcp__github__pull_request_read(method: "get_status", owner, repo, pullNumber)
    ```
-3. Record: PR number, CI status (passing/failing/pending), review state (approved/changes-requested/pending)
+4. Record: PR number, CI status (passing/failing/pending), review state (approved/changes-requested/pending)
+
+Also check if a **feature→main PR** exists:
+```bash
+gh pr list --base main --head "feature/{epic}-*" --json number,state,title
+```
+If found, include its status in the dashboard.
 
 ### Step 4: Present Dashboard
 
@@ -68,20 +84,28 @@ Output a formatted dashboard:
 ███████████░░░░░░░░░ 55%
 ```
 
-### Summary
-| Status | Count | Issues |
-|--------|-------|--------|
-| Done | {n} | #{list} |
-| In Review | {n} | #{list} |
-| In Progress | {n} | #{list} |
-| Blocked | {n} | #{list} |
-| Ready | {n} | #{list} |
-| Pending | {n} | #{list} |
+### Stories
+
+#### #{N}: {story title} [`size:m`] [`status:in-review`]
+  - Task #{N}: {title} [`status:done`]
+  - Task #{N}: {title} [`status:in-review`]
+  - Bug  #{N}: {title} [`status:ready`]
+  - **Scenarios:** S1 ✅ | S2 🐛 (#{bug_number}) | S2a ✅
+  - **Lessons:** {count} micro-retros captured
+
+#### #{N}: {story title} [`size:s`] [`status:in-progress`]
+  - Task #{N}: {title} [`status:in-progress`]
+  - Task #{N}: {title} [`status:ready`]
+
+{Repeat for each story. Tasks/bugs without a parent story are listed under an "Ungrouped Tasks" heading.}
 
 ### CI Status (In-Review PRs)
-| Issue | PR | CI | Review |
-|-------|----|----|--------|
-| #{issue} | #{pr} | {pass/fail/pending} | {approved/changes-requested/pending} |
+| Issue | PR | Base Branch | CI | Review |
+|-------|----|----|--------|--------|
+| #{issue} | #{pr} | feature/{epic}-v{X} | {pass/fail/pending} | {approved/changes-requested/pending} |
+
+{If a feature→main PR exists:}
+| Feature PR | #{pr} | main | {pass/fail/pending} | {approved/changes-requested/pending} |
 
 ### Blockers
 {For each blocked issue:}
@@ -91,23 +115,33 @@ Output a formatted dashboard:
 ### Remaining Dependency Graph
 {Show only unresolved portions of the DAG}
 
+### Wiki
+- **Meta page:** [{Epic Name}](wiki_link)
+- **PRD:** [PRD-{epic}-v{X}](wiki_link)
+- **Feature branch:** `feature/{epic}-v{Major}`
+
+### Context Documents
+{For each issue labeled `meta:mustread`:}
+- **#{number}: {title}** — {brief description or first line of body}
+
 ### Recommended Next Actions
 {Based on current state:}
-- {If issues are ready: "Dispatch next batch with `pm:dispatch`"}
-- {If all in-review: "Review PRs, then `pm:integrate`"}
+- {If task PRs awaiting review: "Run `claude-pm:pm-review` to process PR reviews"}
+- {If all tasks merged to feature branch: "Run `claude-pm:pm-integrate` to merge feature branch to main"}
+- {If tasks still in progress: "Wait for agents to complete, or check for blockers"}
+- {If issues ready: "Run `claude-pm:pm-dispatch` to start next batch"}
 - {If blockers exist: "Resolve blocker on #{N}: {description}"}
-- {If all done: "Run `pm:integrate` to merge and close milestone"}
 ```
 
 ## Session Recovery
 
 This skill is the **session crash recovery mechanism**. When starting a new session after a crash:
 
-1. Run `pm:status` — it reads all state from GitHub, not from conversation memory
+1. Run `claude-pm:pm-status` — it reads all state from GitHub, not from conversation memory
 2. The dashboard shows exactly where the project stands
 3. Based on the dashboard, the user can:
    - Re-dispatch blocked or failed issues
-   - Continue with `pm:integrate` if PRs are ready
+   - Continue with `claude-pm:pm-integrate` if PRs are ready
    - Manually fix blockers and re-dispatch
 
 No state is lost because GitHub Issues and PRs are the durable state machine.
@@ -129,8 +163,11 @@ Example at 55% (11 full, 9 light):
 
 ## Important Rules
 
-1. **Always show all issues** — including closed ones (they're the "done" count)
-2. **Parse dependencies fresh** — don't cache from a previous session
-3. **CI status is live** — always fetch current status, not cached
-4. **Be actionable** — the "Recommended Next Actions" section must give concrete next steps
-5. **Handle milestone not found** — if no milestone exists, tell the user to run `pm:structure` first
+1. **Always show all issues** — including closed ones (they're the "done" count), but exclude `meta:ignore` issues
+2. **Group tasks under parent stories** — use the `<!-- pm:parent #NN -->` relationship to nest tasks/bugs under their parent story
+3. **Parse dependencies fresh** — don't cache from a previous session
+4. **CI status is live** — always fetch current status, not cached
+5. **Be actionable** — the "Recommended Next Actions" section must give concrete next steps with full skill names (`claude-pm:pm-dispatch`, `claude-pm:pm-integrate`, etc.)
+6. **Handle milestone not found** — if no milestone exists, tell the user to run `claude-pm:pm-structure` first
+7. **Show wiki links** — always include the Wiki section with links to the meta page, PRD, and feature branch
+8. **Show context documents** — always include a Context Documents section if any `meta:mustread` issues exist

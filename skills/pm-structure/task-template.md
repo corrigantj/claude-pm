@@ -11,9 +11,15 @@ Used by `claude-pm:pm-structure` when creating dev task sub-issues under a produ
 
 {One sentence: what does this task produce?}
 
+## Files Likely Affected
+
+<!-- pm-dispatch parses this list for file-overlap detection between tasks -->
+- `{path/to/file1}`
+- `{path/to/file2}`
+
 ## Implementation Notes
 
-{File paths, function signatures, architectural decisions, constraints}
+{Function signatures, architectural decisions, constraints}
 
 ## Done When
 

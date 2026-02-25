@@ -57,7 +57,7 @@ You are a pm-implementer agent. Implement the following GitHub Issue.
 ## Instructions
 
 1. Read the `agents/pm-implementer.md` agent definition in the claude-pm plugin for your full procedure
-2. Follow the 10-phase execution procedure exactly
+2. Follow the 9-phase execution procedure exactly
 3. **Branch from and PR back to the FEATURE BRANCH**, not main
 4. Use TDD — write failing tests first for each scenario
 5. Report progress via GitHub Issue comments

@@ -1,7 +1,7 @@
 ---
 name: pm-implementer
 description: |
-  Use this agent to implement a single GitHub Issue in an isolated git worktree. Spawned by pm-dispatch, never by humans directly. Each agent receives an issue number, branches from a feature branch (not main), reads the full context chain (wiki meta page, PRD, mustread issues, parent story, task), implements with TDD, creates a PR targeting the feature branch, records token calibration data, updates the parent story's scenario tracker, and reports structured results. Follows a 10-phase execution procedure. Examples: <example>Context: pm-dispatch has identified issue #7 as ready for implementation. user: "Implement issue #7: Add user authentication middleware" assistant: "Spawning pm-implementer agent for issue #7 in worktree .worktrees/pm/7-add-auth-middleware, branching from feature/auth-v1.0" <commentary>pm-dispatch spawns one pm-implementer per ready issue, each in its own worktree branching from the feature branch.</commentary></example>
+  Use this agent to implement a single GitHub Issue in an isolated git worktree. Spawned by pm-dispatch, never by humans directly. Each agent receives an issue number, branches from a feature branch (not main), reads the full context chain (wiki meta page, PRD, mustread issues, parent story, task), implements with TDD, creates a PR targeting the feature branch, records token calibration data, and reports structured results. Follows a 9-phase execution procedure. Examples: <example>Context: pm-dispatch has identified issue #7 as ready for implementation. user: "Implement issue #7: Add user authentication middleware" assistant: "Spawning pm-implementer agent for issue #7 in worktree .worktrees/pm/7-add-auth-middleware, branching from feature/auth-v1.0" <commentary>pm-dispatch spawns one pm-implementer per ready issue, each in its own worktree branching from the feature branch.</commentary></example>
 model: opus
 ---
 
@@ -122,18 +122,11 @@ When spawned, your prompt will contain:
 
 ### Phase 8: Update Issue State
 21. Remove `status:in-progress` label, add `status:in-review` label
-22. Post the structured result comment (see Phase 10)
+22. Post the structured result comment (see Phase 9)
 
-### Phase 9: Scenario Tracker
-23. Locate the parent story issue (linked via `<!-- pm:parent #{N} -->` in the task body)
-24. Edit the parent story's **Scenario Acceptance Tracker** table:
-    - For each scenario you addressed, update Status to `done` and link your task/PR
-    - If you discovered a bug in a scenario, update Status to `bug` and link the bug issue (see Bug Filing below)
-25. If you cannot edit the story (permissions, format mismatch), post a comment on the story with the tracker update instead
-
-### Phase 10: Report
-26. Post a **Lessons Learned** comment on the issue (see below)
-27. Return a structured YAML result to the coordinator:
+### Phase 9: Report
+23. Post a **Lessons Learned** comment on the issue (see below)
+24. Return a structured YAML result to the coordinator:
 
 ```yaml
 result:
@@ -179,8 +172,8 @@ If you discover bugs during implementation that are outside your task's scope:
    - **Expected Behavior:** {what should happen}
    - **Reproduction Steps:** {how to trigger}
 2. Label the bug issue: `type:bug`, `priority:` (your best estimate), `status:ready`
-3. Update the parent story's Scenario Acceptance Tracker to reflect the bug
-4. Do NOT attempt to fix the bug yourself unless it blocks your task's scenarios
+3. Do NOT attempt to fix the bug yourself unless it blocks your task's scenarios
+4. The Scenario Acceptance Tracker will be updated by `claude-pm:pm-review` after merge
 
 ## Failure Handling
 

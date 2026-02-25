@@ -91,7 +91,7 @@ Output a formatted dashboard:
   - Task #{N}: {title} [`status:in-review`]
   - Bug  #{N}: {title} [`status:ready`]
   - **Scenarios:** S1 ✅ | S2 🐛 (#{bug_number}) | S2a ✅
-  - **Lessons:** {count} micro-retros captured
+  - **Lessons:** {count} Lessons Learned captured
 
 #### #{N}: {story title} [`size:s`] [`status:in-progress`]
   - Task #{N}: {title} [`status:in-progress`]

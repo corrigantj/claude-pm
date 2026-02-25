@@ -36,7 +36,7 @@ Store results so subsequent skill invocations within the same session skip re-de
 | "Break this down" / has a PRD | `claude-pm:pm-structure` | Convert PRD into Wiki page + Milestone + Issues + feature branch |
 | "Start working" / "Dispatch" | `claude-pm:pm-dispatch` | Spawn parallel agents, task branches off feature branch |
 | "What's the status?" | `claude-pm:pm-status` | Dashboard from GitHub state (anytime, crash recovery) |
-| "Review PRs" / "Check feedback" | `claude-pm:pm-review` | Poll task PRs, merge into feature branch, capture micro-retros |
+| "Review PRs" / "Check feedback" | `claude-pm:pm-review` | Poll task PRs, merge into feature branch, capture lessons learned |
 | "Merge" / "Ship it" / "Integrate" | `claude-pm:pm-integrate` | Feature branch to main PR, retro, wiki update, close milestone |
 
 ## The Flow
@@ -46,7 +46,7 @@ Store results so subsequent skill invocations within the same session skip re-de
 2. claude-pm:pm-structure → Wiki PRD + Meta page + Milestone + Issues + feature branch
 3. claude-pm:pm-dispatch → Spawn agents (task branches off feature branch)
 4. claude-pm:pm-status → Progress dashboard (run anytime, crash recovery)
-5. claude-pm:pm-review → Task PRs reviewed, merged into feature branch, micro-retros
+5. claude-pm:pm-review → Task PRs reviewed, merged into feature branch, lessons learned
 6. claude-pm:pm-integrate → Feature branch → main PR, retro, wiki update, close milestone
 ```
 
@@ -57,7 +57,7 @@ PM skills read `.github/pm-config.yaml` from the project root. If absent, sensib
 Key configuration sections:
 - **wiki** — PRD storage format, meta-page template, auto-publish settings
 - **sizing** — Token-based bucket definitions (XS/S/M/L/XL thresholds and parallelism limits)
-- **review** — Polling interval, auto-merge criteria, micro-retro format
+- **review** — Polling interval, auto-merge criteria, lessons learned format
 - **validation** — Pre-dispatch checks, acceptance criteria enforcement, PR quality gates
 
 See `templates/pm-config.yaml` in this plugin for the full schema and defaults.

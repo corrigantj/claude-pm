@@ -100,13 +100,16 @@ PRD: [PRD-{epic}-v{Major}](../../wiki/PRD-{epic}-v{Major})
 
 ### Step 5: Poll for Review
 
-Use the same polling mechanism as `claude-pm:pm-review` but for the feature→main PR:
+Use the same polling mechanism as `claude-pm:pm-review` but for the feature→main PR.
 
-1. Spawn a polling sub-agent (use `review.polling_model` from config, default haiku)
-2. Poll at `review.polling_interval` seconds (default 60)
+Read `polling-prompt.md` from the `claude-pm:pm-review` skill directory and fill in the template with the feature PR number.
+
+1. Spawn a polling sub-agent using the filled template (use `review.polling_model` from config, default haiku)
+2. Poll at `review.polling_interval` seconds (default 60), timeout at `review.polling_timeout` (default 3600)
 3. On review comments: address feedback, push fixes to feature branch
 4. On approval: proceed to merge
-5. If `review.require_codeowners` is true, verify CODEOWNERS approval before proceeding
+5. On timeout: report to user and wait for direction
+6. If `review.require_codeowners` is true, verify CODEOWNERS approval before proceeding
 
 ### Step 6: On Approval — Merge
 
@@ -137,12 +140,12 @@ If the feature branch has merge conflicts after rebase:
 
 #### 6c. Merge PR
 
-Use the configured merge strategy:
+Use the configured feature merge strategy:
 ```bash
-gh pr merge {pr_number} --{strategy}
+gh pr merge {pr_number} --{feature_strategy}
 ```
 
-Where `{strategy}` is `squash`, `merge`, or `rebase` from `merge.strategy` in config (default: `squash`).
+Where `{feature_strategy}` is `squash`, `merge`, or `rebase` from `merge.feature_strategy` in config (default: `squash`).
 
 If `merge.delete_branch` is true, add `--delete-branch`.
 
@@ -173,20 +176,20 @@ Feature branch merged to {base_branch}.
 
 If user chooses to keep open, stop here. Otherwise proceed with steps 8-14.
 
-### Step 8: Collect Micro-Retros
+### Step 8: Collect Lessons Learned
 
-Gather all micro-retro comments from task issues in the milestone:
+Gather all `## Lessons Learned` comments from task issues in the milestone:
 
 ```bash
-# For each issue in milestone, find comments matching "## Micro-Retro"
+# For each issue in milestone, find comments matching "## Lessons Learned"
 gh issue list --milestone "{milestone_title}" --state closed --json number --jq '.[].number'
 ```
 
-For each issue, fetch comments and parse micro-retro sections:
+For each issue, fetch comments and parse the `## Lessons Learned` section:
 - Estimated size (the `size:` label)
 - Actual tokens consumed
-- Lessons learned (what went well, what went wrong, surprises)
-- Patterns discovered
+- Surprises, patterns, pitfalls (posted by the agent during implementation)
+- Review rounds, what went well/wrong (appended by pm-review after merge)
 
 ### Step 9: Create Retro Wiki Page
 
@@ -197,7 +200,7 @@ For each issue, fetch comments and parse micro-retro sections:
 2. Create `Retro-{epic}-v{Major}.{Minor}.md` using `retro-template.md` from this skill directory
 3. Fill with:
    - Milestone summary (dates, counts, PRD link)
-   - Aggregated micro-retro data (lessons learned, patterns)
+   - Aggregated lessons learned data (patterns, surprises, pitfalls)
    - Token calibration table (estimated vs actual per task)
    - Calibration recommendations
    - Process notes
@@ -239,7 +242,7 @@ For each issue, fetch comments and parse micro-retro sections:
 
 Using the token data collected in Step 8:
 
-1. Tabulate estimated vs actual tokens from all micro-retros
+1. Tabulate estimated vs actual tokens from all Lessons Learned comments
 2. Calculate delta percentages for each task
 3. Identify systematic drift (e.g., consistent underestimation of a size bucket)
 4. Generate recommended bucket adjustments if data shows consistent drift

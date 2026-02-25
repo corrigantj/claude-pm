@@ -1,6 +1,6 @@
 ---
 name: pm-review
-description: Use after pm-dispatch agents create PRs — polls for human review activity on task PRs targeting the feature branch, addresses feedback, merges approved PRs, captures micro-retros with token calibration
+description: Use after pm-dispatch agents create PRs — polls for human review activity on task PRs targeting the feature branch, addresses feedback, merges approved PRs, captures lessons learned with token calibration
 ---
 
 # pm-review — Poll Reviews, Address Feedback, Merge Task PRs
@@ -34,15 +34,22 @@ For each PR, collect: PR number, linked issue number (from branch name or PR bod
 
 ### Step 2: Spawn Polling Sub-Agent
 
-Use the Task tool to spawn a lightweight polling agent:
+Read `polling-prompt.md` from this skill directory and fill in the template with:
+- PR numbers from Step 1
+- Owner/repo from config
+- `review.polling_interval` (default: 60 seconds)
+- `review.polling_timeout` (default: 3600 seconds)
+
+Use the Task tool to spawn the polling agent:
 - Model: `review.polling_model` from config (default: haiku)
-- The sub-agent polls GitHub API at `review.polling_interval` seconds (default: 60)
-- Endpoints polled:
-  - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews` — review status
-  - `gh api repos/{owner}/{repo}/pulls/{pr}/comments` — inline comments
-  - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews/{id}/comments` — review comments
-- When new activity detected (new review, new comments, status change), sub-agent returns the review data and terminates
-- Sub-agent does NOT reason about code — only detects changes and returns raw data
+- Prompt: filled polling-prompt.md template
+
+The sub-agent:
+- Polls GitHub API at the configured interval for review activity
+- Returns a structured YAML result on first activity, timeout, or error
+- Does NOT reason about code — only detects changes and returns raw data
+- Backs off exponentially on rate limits
+- Terminates after `polling_timeout` seconds if no activity detected
 
 ### Step 3: On Activity Detected
 
@@ -56,7 +63,7 @@ Main agent receives review data. Route based on review state:
 For each requested change or comment:
 
 1. Read the review comment/inline comment
-2. Navigate to the task's worktree (or re-create if cleaned up)
+2. Navigate to the task's worktree. If the worktree no longer exists, re-create it from the task branch: `git worktree add {path} {branch_name}`
 3. Make the requested code changes
 4. Run tests to verify the fix doesn't break anything
 5. Commit with descriptive message referencing the review
@@ -74,35 +81,50 @@ For each requested change or comment:
 
 2. If `review.require_codeowners` is true, verify a matching CODEOWNER has approved
 
-3. Merge using rebase strategy (task PRs always rebase into feature branch):
+3. Merge using `merge.task_strategy` from config (default: `rebase` — task PRs rebase into feature branch for clean history):
    ```bash
-   gh pr merge {pr_number} --rebase --delete-branch
+   gh pr merge {pr_number} --{task_strategy} --delete-branch
    ```
    (respect `merge.delete_branch` config)
 
 4. Update linked issue: remove `status:in-review`, add `status:done`, close issue
 
-### Step 6: Capture Micro-Retro
+### Step 6: Append Review Data to Lessons Learned
 
-After merge, post a lessons-learned comment on the **task issue** (not the PR):
+After merge, find the existing `## Lessons Learned` comment on the **task issue** (posted by the pm-implementer agent during implementation). Append review-round data to it:
 
 ```markdown
-## Micro-Retro: #{issue_number}
-
-- **Estimated size:** {size label from issue labels}
-- **Actual tokens:** ~{N}K
 - **Review rounds:** {count of review cycles}
 - **What went well:** {summary of smooth implementation areas}
-- **What went wrong:** {summary of issues encountered}
-- **Surprises:** {unexpected challenges or discoveries}
-- **Patterns discovered:** {reusable insights for future tasks}
+- **What went wrong:** {summary of issues encountered during review}
 ```
 
-Also update the parent story's Scenario Acceptance Tracker:
-- Find parent story (from `<!-- pm:parent #NN -->` or sub-issue relationship)
-- Update the scenarios this task addressed from `-` to `✅` (or `🐛` if bugs were found)
+If no `## Lessons Learned` comment exists (e.g., agent crashed before posting), create a new one with the full template:
 
-### Step 7: Check for Next Batch
+```markdown
+## Lessons Learned
+
+- **Estimated size:** {size label from issue labels}
+- **Actual tokens:** (unknown — agent did not report)
+- **Surprises:** (unknown — agent did not report)
+- **Patterns:** (unknown — agent did not report)
+- **Pitfalls:** (unknown — agent did not report)
+- **Review rounds:** {count of review cycles}
+- **What went well:** {summary of smooth implementation areas}
+- **What went wrong:** {summary of issues encountered during review}
+```
+
+### Step 7: Update Scenario Acceptance Tracker
+
+After merge, update the parent story's Scenario Acceptance Tracker:
+
+1. Find the parent story (from `<!-- pm:parent #NN -->` in the task body or sub-issue relationship)
+2. For each scenario this task addressed, update the tracker table:
+   - Status `-` to `done` and link the task/PR
+   - If bugs were filed during implementation, status `-` to `bug` and link the bug issue
+3. If you cannot edit the story body (permissions, format mismatch), post a comment on the story with the tracker update instead
+
+### Step 8: Check for Next Batch
 
 After all current PRs in this cycle are processed:
 
@@ -116,7 +138,7 @@ After all current PRs in this cycle are processed:
 |----|-------|-------|---------------|--------|
 | #{pr} | #{issue} | {title} | {N} | Yes/No |
 
-**Micro-retros captured:** {count}
+**Lessons Learned updated:** {count}
 **Tasks still open:** {count}
 **Dependencies newly unblocked:** {count}
 ```
@@ -131,7 +153,7 @@ After all current PRs in this cycle are processed:
 1. **Never merge without approval** — or CODEOWNERS approval if `review.require_codeowners` is true
 2. **Always rebase onto feature branch** before merging — ensures clean history
 3. **Run tests after addressing feedback** — before pushing updated commits
-4. **Capture micro-retro on every merged PR** — no exceptions, this feeds the full retrospective
+4. **Append review data to Lessons Learned on every merged PR** — no exceptions, this feeds the full retrospective
 5. **Polling sub-agent uses cheapest model** — it only detects changes, doesn't reason about code
 6. **If PR is closed/rejected** — report to user and stop processing that PR
 7. **All skill references** use `claude-pm:pm-{skill}` format

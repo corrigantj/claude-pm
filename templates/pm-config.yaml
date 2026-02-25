@@ -36,9 +36,14 @@ approval_gates:
   before_wiki_update: false     # Confirm before writing wiki pages
 
 # ─── Merge strategy ─────────────────────────────────────────────────────────
-# Controls how completed PRs are merged into the base branch.
+# Two-wave model uses separate strategies for task PRs and feature PRs.
+# task_strategy: how task PRs merge into the feature branch (wave 1, pm-review)
+#   Default: rebase — task PRs always rebase into feature branch for clean history.
+# feature_strategy: how the feature branch merges into the base branch (wave 2, pm-integrate)
+#   Default: squash — collapses the feature branch into a single commit on main.
 merge:
-  strategy: squash   # squash | merge | rebase
+  task_strategy: rebase    # squash | merge | rebase (wave 1: task → feature)
+  feature_strategy: squash # squash | merge | rebase (wave 2: feature → main)
   delete_branch: true
 
 # ─── Build/test commands ────────────────────────────────────────────────────
@@ -60,9 +65,14 @@ labels: []
 # ─── Wiki management ────────────────────────────────────────────────────────
 # claude-pm v2 maintains a project wiki with architecture docs, decision logs,
 # and living PRD pages. The wiki repo is cloned as a sibling directory.
+# meta_page and prd are populated by pm-structure and used by pm-dispatch
+# to inject context into agent prompts. Leave empty to auto-derive from
+# the epic name (e.g., wiki/{Epic-Name}.md and wiki/PRD-{epic}-v{Major}.md).
 wiki:
   directory: .wiki    # Wiki clone location relative to repo root
   auto_clone: true    # Automatically clone the wiki repo on first use
+  meta_page: ""       # Path to the feature's wiki meta page (auto-derived if empty)
+  prd: ""             # Path to the PRD wiki page (auto-derived if empty)
 
 # ─── Epics ───────────────────────────────────────────────────────────────────
 # Epics group related milestones and issues under a versioned umbrella.
@@ -83,15 +93,19 @@ validation:
 # A lightweight model polls GitHub at the configured interval.
 review:
   polling_interval: 60    # Seconds between review-state polls
+  polling_timeout: 3600   # Max seconds before polling gives up (default: 1 hour)
   polling_model: haiku    # Model used for polling (haiku | sonnet)
   require_codeowners: false  # Require CODEOWNERS approval before merge
 
 # ─── Sizing ──────────────────────────────────────────────────────────────────
 # Token-based sizing determines the size/ label assigned to each issue.
-# Buckets are evaluated in order; the first matching range wins.
+# Buckets define label descriptions and calibration ranges.
+# token_ranges provides a flat lookup used by pm-dispatch to inject sizing
+# context into agent prompts. Auto-derived from buckets if empty.
 # An upper of null means unbounded (xl issues should be split).
 sizing:
   metric: tokens   # tokens | lines | files
+  token_ranges:    # Flat lookup: { "size:xs": [1000, 10000], ... }. Auto-derived from buckets if empty.
   buckets:
     xs:
       lower: 1000

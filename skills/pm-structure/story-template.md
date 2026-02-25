@@ -17,7 +17,7 @@ As a **{persona}**, I want to **{action}** so that **{benefit}**.
 
 ## Acceptance Criteria
 
-<!-- Scenarios numbered S1, S2, etc. for cross-referencing from dev tasks and bugs -->
+<!-- Scenarios numbered S1, S2, etc. Sub-scenarios use letter suffixes: S2a, S2b, etc. Cross-referenced from dev tasks and bugs. -->
 
 **S1: {Scenario name}**
 - Given {precondition}

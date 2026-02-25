@@ -29,7 +29,7 @@ If the PRD is ambiguous, ask the user for clarification before proceeding.
 
 Read `.github/pm-config.yaml` from the project root. Extract:
 - **Wiki settings** -- `wiki.auto_clone`, template paths
-- **Sizing buckets** -- `sizing.buckets` with time ranges and descriptions
+- **Sizing buckets** -- `sizing.buckets` with token ranges (lower/upper) and descriptions
 - **Validation settings** -- `validation.enabled`, required PRD sections
 - **Approval gates** -- `approval_gates.before_wiki_update`, etc.
 
@@ -47,12 +47,13 @@ project:
 wiki:
   auto_clone: true
 sizing:
+  metric: tokens
   buckets:
-    xs: "< 30 min"
-    s: "30 min - 1 hour"
-    m: "1 - 3 hours"
-    l: "3 - 8 hours"
-    xl: "Should be split"
+    xs: { lower: 1000, upper: 10000, description: "Trivial change, single file" }
+    s: { lower: 10000, upper: 50000, description: "Small feature, few files" }
+    m: { lower: 50000, upper: 200000, description: "Moderate feature, multiple files" }
+    l: { lower: 200000, upper: 500000, description: "Large feature, significant scope" }
+    xl: { lower: 500000, upper: null, description: "Must be split — too large for one agent session" }
 validation:
   enabled: true
 labels: []
@@ -87,16 +88,42 @@ Loop until all checks pass. Report all failures at once so the user can fix them
 
 ### Step 5: Create/Update Wiki
 
-Clone the wiki repo if needed (`wiki.auto_clone`). Pull latest.
+**5a. Wiki availability check:**
 
-Then create or update these pages:
+Before any wiki operations, verify the wiki is accessible:
+```bash
+git clone --depth 1 https://github.com/{owner}/{repo}.wiki.git {wiki_directory} 2>&1
+```
+
+If the clone fails (wiki disabled, permissions error, network failure):
+- **Wiki disabled (404):** Warn the user: "Wiki is not enabled on this repository. Skipping wiki pages (PRD, meta page, templates). Enable wiki in repository settings and re-run pm-structure to create wiki pages." Continue with Steps 6+ (labels, milestone, issues).
+- **Permission denied:** Report the error and stop. The user must fix repository access.
+- **Network failure:** Retry once after 5 seconds. If still failing, report and stop.
+
+If `wiki.auto_clone` is false and no wiki directory exists, skip wiki steps with a warning.
+
+**5b. Create or update wiki pages:**
+
+If wiki is available, pull latest, then create or update these pages:
 
 1. **`Home.md`** -- If it doesn't exist, create a landing page that links to all meta pages and milestones
 2. **Meta page `{Epic-Name}.md`** -- If this is the first version of this epic, create using `meta-template.md` from this skill directory
 3. **PRD page `PRD-{epic}-v{Major}.md`** -- Create using `prd-template.md` from this skill directory. Set Status to **Draft**
 4. **`_Meta-Template.md`** and **`_PRD-Template.md`** -- If they don't exist, create hidden templates (copies of `meta-template.md` and `prd-template.md`) so wiki editors can create pages manually
 
-Commit and push wiki changes. Respect `approval_gates.before_wiki_update` -- if set, confirm with user before pushing.
+**5c. Commit and push:**
+
+Respect `approval_gates.before_wiki_update` -- if set, confirm with user before pushing.
+
+```bash
+git -C {wiki_directory} add -A
+git -C {wiki_directory} commit -m "pm-structure: add PRD and meta page for {epic} v{Major}"
+git -C {wiki_directory} push origin master
+```
+
+If push fails (merge conflict, network error):
+- **Merge conflict:** Pull with rebase, attempt auto-resolve. If conflict persists, present diff to user.
+- **Network error:** Retry once. If still failing, report the error. Wiki pages are committed locally and can be pushed manually later.
 
 ### Step 6: Create Epic Label
 
@@ -114,11 +141,6 @@ Use `:` delimiter (NOT `/`). Create via `gh label create --force`:
 - `priority:high` (color: `d93f0b`, description: "Should have -- core functionality")
 - `priority:medium` (color: `fbca04`, description: "Nice to have -- enhances project")
 - `priority:low` (color: `0e8a16`, description: "Could defer -- not blocking")
-
-**Agent labels:**
-- `agent:ready` (color: `7057ff`, description: "Ready for agent pickup")
-- `agent:blocked` (color: `7057ff`, description: "Agent cannot proceed")
-- `agent:review` (color: `7057ff`, description: "Agent work complete, needs review")
 
 **Meta labels:**
 - `meta:ignore` (color: `006b75`, description: "Exclude from PM tracking")
@@ -223,12 +245,15 @@ For each story, create dev tasks as sub-issues. Compose bodies using `task-templ
 - **Parent link** -- `#{parent_issue_number}`
 - **Scenarios addressed** -- which parent scenarios (S1, S2, etc.) this task covers
 - **Objective** -- one sentence describing what this task produces
-- **Implementation notes** -- file paths, function signatures, architectural decisions
+- **Files Likely Affected** -- bulleted list of file paths this task will create or modify (used by `claude-pm:pm-dispatch` for file-overlap detection and by `pm-implementer` as a scope guardrail)
+- **Implementation notes** -- function signatures, architectural decisions
 - **Done when** -- concrete, verifiable checklist items
 
 If Sub-issues API is available, create tasks as sub-issues of their parent story.
 
 If Sub-issues API is unavailable, create as regular issues with `<!-- pm:parent #NN -->` in the body to link to the parent story.
+
+**Always assign tasks to the milestone** created in Step 8, regardless of whether they are sub-issues or regular issues. Sub-issues do not inherit milestone assignment from their parent.
 
 Apply labels:
 - `epic:{name}` -- links task to the epic
@@ -266,6 +291,7 @@ After all artifacts are created, verify each one:
 - Parent link in body
 - Scenarios addressed listed
 - Objective section
+- Files Likely Affected section (at least one file path)
 - Done When checklist
 
 **Milestone must have:**

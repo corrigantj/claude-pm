@@ -33,10 +33,11 @@ commands:
   lint: ""
   build: ""
 wiki:
-  meta_page: ""      # path or URL to the feature's wiki meta page
-  prd: ""            # path or URL to the PRD document
+  directory: .wiki
+  meta_page: ""      # auto-derived from epic name if empty: {wiki_directory}/{Epic-Name}.md
+  prd: ""            # auto-derived from epic name if empty: {wiki_directory}/PRD-{epic}-v{Major}.md
 sizing:
-  token_ranges: {}   # e.g. { "size:xs": [0, 4000], "size:s": [4000, 12000], ... }
+  token_ranges: {}   # auto-derived from sizing.buckets if empty: { "size:xs": [1000, 10000], ... }
 review:
   auto_request: false
   reviewers: []      # GitHub usernames to request review from
@@ -88,7 +89,7 @@ An issue is **ready** if:
 
 From the ready set, select up to `max_parallel` issues. Selection criteria:
 1. **Priority sort** — `priority:critical` > `priority:high` > `priority:medium` > `priority:low`
-2. **File overlap check** — if two ready issues list the same files in "Files Likely Affected", only dispatch one per batch (to avoid merge conflicts)
+2. **File overlap check** — parse file paths from the `## Files Likely Affected` section of each issue body (bulleted list of paths). If two ready issues list the same file path, only dispatch one per batch (to avoid merge conflicts)
 3. **Token-based sizing preference** — when priorities are equal, prefer smaller token estimates (`size:xs` < `size:s` < `size:m` < `size:l` < `size:xl`) for faster feedback
 
 ### Step 5: Approval Gate
@@ -123,11 +124,7 @@ For each issue in the batch:
 
 2. **Generate worktree path:** `{worktree_dir}/{branch_prefix}/{issue_number}-{slug}`
 
-3. **Create worktree from feature branch:**
-   ```bash
-   git checkout -b {branch_prefix}/{issue_number}-{slug} {feature_branch}
-   ```
-   The worktree is created from the feature branch, NOT from main.
+3. **Worktree creation is delegated to the agent** — the pm-implementer agent creates its own worktree via `superpowers:using-git-worktrees` in Phase 1. pm-dispatch does NOT create the worktree or branch; it only provides the branch name and worktree path in the agent prompt.
 
 4. **Label the issue** `status:in-progress` (remove `status:ready`)
 
@@ -203,6 +200,45 @@ Rules:
 - Truncate to 50 characters at word boundary
 - Alphanumeric and hyphens only
 
+## Worktree Lifecycle
+
+Worktrees are created by the pm-implementer agent (Phase 1) and need lifecycle management across dispatch, review, and integration.
+
+### Before Dispatch: Existence Check
+
+Before spawning an agent for an issue, check if a worktree already exists at the target path:
+```bash
+git worktree list | grep "{worktree_path}"
+```
+
+| Condition | Action |
+|-----------|--------|
+| No worktree exists | Normal path — agent creates it in Phase 1 |
+| Worktree exists, branch matches | Re-dispatch scenario (agent failed/blocked previously). Remove the stale worktree first: `git worktree remove {path} --force`, then dispatch normally |
+| Worktree exists, branch differs | Conflict — another issue was assigned this path. Report error, skip this issue |
+
+### On Agent Failure
+
+If an agent returns `status: error` or `status: blocked`:
+- The worktree is left in place (it may contain useful diagnostic state)
+- If the issue is re-dispatched later, the existence check above handles cleanup
+- If the issue is abandoned, worktree is cleaned up during `claude-pm:pm-integrate` Step 14
+
+### During Review (pm-review Step 4)
+
+When `claude-pm:pm-review` needs to address feedback on a task PR:
+1. Check if the worktree still exists at the original path
+2. If yes: reuse it (navigate to it, pull latest)
+3. If no: re-create it from the task branch (`git worktree add {path} {branch_name}`)
+
+### After Integration (pm-integrate Step 14)
+
+All worktrees for the milestone are cleaned up after merge:
+```bash
+git worktree remove {path}  # for each completed worktree
+git worktree prune
+```
+
 ## Important Rules
 
 1. **Never dispatch more than `max_parallel` agents** — even if more issues are ready
@@ -212,3 +248,4 @@ Rules:
 5. **Use the Task tool** — agents are spawned via `Task` with `subagent_type: "pm-implementer"`, NOT via bash
 6. **Branch from the feature branch** — never branch from main; agents PR back to the feature branch
 7. **Inject mustread context** — every agent receives the bodies of all `meta:mustread` issues as context
+8. **Check worktree existence** before dispatch — handle re-dispatch and conflict scenarios

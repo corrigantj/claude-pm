@@ -25,16 +25,18 @@ All state lives in GitHub Issues, PRs, and Wiki — session crashes are fully re
 
 ### 1. Install the superpowers plugin (required dependency)
 
-claude-pm depends on [superpowers](https://github.com/anthropics/superpowers) for brainstorming, TDD, git worktrees, and systematic debugging. Install it first:
+claude-pm depends on [superpowers](https://github.com/obra/superpowers) for brainstorming, TDD, git worktrees, and systematic debugging. Install it first:
 
 ```
-/install-plugin https://github.com/anthropics/superpowers
+/plugin marketplace add obra/superpowers
+/plugin install superpowers@obra-superpowers
 ```
 
 ### 2. Install claude-pm
 
 ```
-/install-plugin https://github.com/corrigantj/claude-pm
+/plugin marketplace add corrigantj/claude-pm
+/plugin install claude-pm@corrigantj-claude-pm
 ```
 
 ### 3. Verify prerequisites

@@ -1,9 +1,9 @@
 ---
-name: pm-integrate
+name: integrate
 description: Use when all task PRs are merged into the feature branch — creates feature→main PR, polls for review, merges, creates retro wiki page, updates meta wiki, runs sizing calibration, closes milestone
 ---
 
-# pm-integrate — Feature Branch Merge, Retro, and Milestone Closure
+# integrate — Feature Branch Merge, Retro, and Milestone Closure
 
 **Type:** Rigid. Follow this process exactly.
 
@@ -11,13 +11,13 @@ description: Use when all task PRs are merged into the feature branch — create
 
 - A GitHub Milestone with all task PRs merged into the feature branch (wave 1 complete)
 - Access to the project repository (GitHub MCP + gh CLI)
-- `.github/pm-config.yaml` for configuration values
+- `.github/limbic.yaml` for configuration values
 
 ## Two-Wave Model Context
 
-In claude-pm v2, merging happens in two waves:
-- **Wave 1 (pm-review):** Task branches merge into the feature branch via topological sort
-- **Wave 2 (pm-integrate — this skill):** The feature branch merges into the base branch (main)
+In limbic, merging happens in two waves:
+- **Wave 1 (review):** Task branches merge into the feature branch via topological sort
+- **Wave 2 (integrate — this skill):** The feature branch merges into the base branch (main)
 
 This skill handles wave 2 plus all finalization: retro wiki page, meta wiki page update, PRD status update, sizing calibration PR, and milestone closure.
 
@@ -57,7 +57,7 @@ gh issue list --milestone "{milestone_title}" --state open --json number,title,l
 
 ### Step 2: Build Merge Order
 
-In the two-wave model, there is typically **one feature PR** (feature→main). The per-issue topological sort is handled by `claude-pm:pm-review` in wave 1.
+In the two-wave model, there is typically **one feature PR** (feature→main). The per-issue topological sort is handled by `limbic:review` in wave 1.
 
 If multiple feature branches are ready (multiple epics), use dependency ordering between epics:
 - Parse epic-level dependencies from PRD wiki pages
@@ -113,9 +113,9 @@ PRD: [PRD-{epic}-v{Major}](../../wiki/PRD-{epic}-v{Major})
 
 ### Step 5: Poll for Review
 
-Use the same polling mechanism as `claude-pm:pm-review` but for the feature→main PR.
+Use the same polling mechanism as `limbic:review` but for the feature→main PR.
 
-Read `polling-prompt.md` from the `claude-pm:pm-review` skill directory and fill in the template with the feature PR number.
+Read `polling-prompt.md` from the `limbic:review` skill directory and fill in the template with the feature PR number.
 
 1. Spawn a polling sub-agent using the filled template (use `review.polling_model` from config, default haiku)
 2. Poll at `review.polling_interval` seconds (default 60), timeout at `review.polling_timeout` (default 3600)
@@ -184,7 +184,7 @@ Feature branch merged to {base_branch}.
 
 **Options:**
 1. **Close milestone** — run retro, update wiki, create calibration PR, close
-2. **Keep open** — more work planned for this epic version (invoke `claude-pm:pm-dispatch` for next minor)
+2. **Keep open** — more work planned for this epic version (invoke `limbic:dispatch` for next minor)
 ```
 
 If user chooses to keep open, stop here. Otherwise proceed with steps 8-14.
@@ -202,7 +202,7 @@ For each issue, fetch comments and parse the `## Lessons Learned` section:
 - Estimated size (the `size:` label)
 - Actual tokens consumed
 - Surprises, patterns, pitfalls (posted by the agent during implementation)
-- Review rounds, what went well/wrong (appended by pm-review after merge)
+- Review rounds, what went well/wrong (appended by review after merge)
 
 ### Step 9: Create Retro Wiki Page
 
@@ -259,11 +259,11 @@ Using the token data collected in Step 8:
 2. Calculate delta percentages for each task
 3. Identify systematic drift (e.g., consistent underestimation of a size bucket)
 4. Generate recommended bucket adjustments if data shows consistent drift
-5. Create a branch and PR modifying the `sizing.buckets` section of `.github/pm-config.yaml`:
+5. Create a branch and PR modifying the `sizing.buckets` section of `.github/limbic.yaml`:
    ```bash
    git checkout -b calibrate/sizing-{epic}-v{Major}.{Minor} origin/{base_branch}
-   # Apply sizing bucket updates to .github/pm-config.yaml
-   git add .github/pm-config.yaml
+   # Apply sizing bucket updates to .github/limbic.yaml
+   git add .github/limbic.yaml
    git commit -m "chore: calibrate sizing buckets from {epic} v{Major}.{Minor} retro"
    git push -u origin calibrate/sizing-{epic}-v{Major}.{Minor}
    gh pr create --base {base_branch} \
@@ -356,4 +356,4 @@ git worktree prune
 7. **Always create sizing calibration PR** with evidence table
 8. **PRD status → Approved** after merge
 9. All label references use `:` delimiter (e.g., `status:done`, `size:m`)
-10. All skill references use `claude-pm:pm-{skill}` format
+10. All skill references use `limbic:{skill}` format

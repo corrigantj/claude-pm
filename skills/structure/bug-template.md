@@ -1,6 +1,6 @@
 # Bug Template
 
-Used by `claude-pm:pm-structure` or pm-implementer agents when filing bug sub-issues under a product story. Replace `{placeholders}` with actual content.
+Used by `limbic:structure` or implementer agents when filing bug sub-issues under a product story. Replace `{placeholders}` with actual content.
 
 ---
 

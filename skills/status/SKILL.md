@@ -1,9 +1,9 @@
 ---
-name: pm-status
+name: status
 description: View project progress with sub-issue grouping under parent stories, wiki links, feature branch awareness — builds a dashboard from GitHub Issue and PR state, categorizes by status, shows blockers and CI results, enables session crash recovery
 ---
 
-# pm-status — Progress Dashboard
+# status — Progress Dashboard
 
 **Type:** Rigid. Follow this process exactly.
 
@@ -32,10 +32,10 @@ mcp__github__list_issues with owner, repo (both OPEN and CLOSED state)
 
 Filter to the target milestone. For each issue, collect:
 - Number, title, state (open/closed), labels, assignee
-- Parse `<!-- pm:blocked-by #N, #M -->` from body
-- Parse `<!-- pm:parent #NN -->` from body to build parent→child relationships
+- Parse `<!-- limbic:blocked-by #N, #M -->` from body
+- Parse `<!-- limbic:parent #NN -->` from body to build parent→child relationships
 
-For each story issue (labeled `type:story`), also fetch its sub-issues (tasks and bugs). Build a map of parent story → child tasks/bugs using the `<!-- pm:parent #NN -->` comment parsed from each task/bug body.
+For each story issue (labeled `type:story`), also fetch its sub-issues (tasks and bugs). Build a map of parent story → child tasks/bugs using the `<!-- limbic:parent #NN -->` comment parsed from each task/bug body.
 
 **Skip `meta:ignore` issues** — exclude them from the dashboard entirely.
 
@@ -67,7 +67,7 @@ If an issue's labels conflict (e.g., both `status:ready` and `status:blocked`), 
 
 For each issue labeled `status:in-review`:
 
-1. Find the linked PR (search for PRs mentioning `Closes #{issue_number}` or with branch name matching `pm/{issue_number}-*`)
+1. Find the linked PR (search for PRs mentioning `Closes #{issue_number}` or with branch name matching `limbic/{issue_number}-*`)
 2. PRs now target the **feature branch** (e.g., `feature/{epic}-v{Major}`), not `main`. Verify the PR base branch is the feature branch.
 3. Fetch CI status:
    ```
@@ -135,10 +135,10 @@ Output a formatted dashboard:
 
 ### Recommended Next Actions
 {Based on current state:}
-- {If task PRs awaiting review: "Run `claude-pm:pm-review` to process PR reviews"}
-- {If all tasks merged to feature branch: "Run `claude-pm:pm-integrate` to merge feature branch to main"}
+- {If task PRs awaiting review: "Run `limbic:review` to process PR reviews"}
+- {If all tasks merged to feature branch: "Run `limbic:integrate` to merge feature branch to main"}
 - {If tasks still in progress: "Wait for agents to complete, or check for blockers"}
-- {If issues ready: "Run `claude-pm:pm-dispatch` to start next batch"}
+- {If issues ready: "Run `limbic:dispatch` to start next batch"}
 - {If blockers exist: "Resolve blocker on #{N}: {description}"}
 ```
 
@@ -146,11 +146,11 @@ Output a formatted dashboard:
 
 This skill is the **session crash recovery mechanism**. When starting a new session after a crash:
 
-1. Run `claude-pm:pm-status` — it reads all state from GitHub, not from conversation memory
+1. Run `limbic:status` — it reads all state from GitHub, not from conversation memory
 2. The dashboard shows exactly where the project stands
 3. Based on the dashboard, the user can:
    - Re-dispatch blocked or failed issues
-   - Continue with `claude-pm:pm-integrate` if PRs are ready
+   - Continue with `limbic:integrate` if PRs are ready
    - Manually fix blockers and re-dispatch
 
 No state is lost because GitHub Issues and PRs are the durable state machine.
@@ -173,10 +173,10 @@ Example at 55% (11 full, 9 light):
 ## Important Rules
 
 1. **Always show all issues** — including closed ones (they're the "done" count), but exclude `meta:ignore` issues
-2. **Group tasks under parent stories** — use the `<!-- pm:parent #NN -->` relationship to nest tasks/bugs under their parent story
+2. **Group tasks under parent stories** — use the `<!-- limbic:parent #NN -->` relationship to nest tasks/bugs under their parent story
 3. **Parse dependencies fresh** — don't cache from a previous session
 4. **CI status is live** — always fetch current status, not cached
-5. **Be actionable** — the "Recommended Next Actions" section must give concrete next steps with full skill names (`claude-pm:pm-dispatch`, `claude-pm:pm-integrate`, etc.)
-6. **Handle milestone not found** — if no milestone exists, tell the user to run `claude-pm:pm-structure` first
+5. **Be actionable** — the "Recommended Next Actions" section must give concrete next steps with full skill names (`limbic:dispatch`, `limbic:integrate`, etc.)
+6. **Handle milestone not found** — if no milestone exists, tell the user to run `limbic:structure` first
 7. **Show wiki links** — always include the Wiki section with links to the meta page, PRD, and feature branch
 8. **Show context documents** — always include a Context Documents section if any `meta:mustread` issues exist

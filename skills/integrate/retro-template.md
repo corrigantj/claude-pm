@@ -1,6 +1,6 @@
 # Retrospective Wiki Page Template
 
-Used by `claude-pm:pm-integrate` when creating retrospective pages in the GitHub Wiki
+Used by `limbic:integrate` when creating retrospective pages in the GitHub Wiki
 after a milestone is completed and merged. Replace `{placeholders}` with actual content.
 
 ---
@@ -21,7 +21,7 @@ after a milestone is completed and merged. Replace `{placeholders}` with actual 
 
 ## Lessons Learned
 
-{Aggregated from ## Lessons Learned comments on individual task issues, posted by pm-implementer agents and appended by pm-review.}
+{Aggregated from ## Lessons Learned comments on individual task issues, posted by implementer agents and appended by review.}
 
 ### What Went Well
 
@@ -47,7 +47,7 @@ after a milestone is completed and merged. Replace `{placeholders}` with actual 
 
 ### Calibration Recommendations
 
-{Based on the data above, recommended adjustments to sizing buckets in pm-config.yaml.}
+{Based on the data above, recommended adjustments to sizing buckets in limbic.yaml.}
 
 | Bucket | Current Range | Proposed Range | Reason |
 |--------|--------------|----------------|--------|

@@ -1,6 +1,6 @@
 # Story Template
 
-Used by `claude-pm:pm-structure` when creating product story Issues. Replace `{placeholders}` with actual content.
+Used by `limbic:structure` when creating product story Issues. Replace `{placeholders}` with actual content.
 
 ---
 

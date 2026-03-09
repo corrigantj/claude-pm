@@ -1,4 +1,4 @@
-# claude-pm
+# limbic
 
 **Your favorite AI product squad. All GitHub-native.  Built for Claude Code.**
 
@@ -11,37 +11,37 @@
 
 ## How It Works
 
-claude-pm loads automatically when you start a Claude Code session. Just describe what you want to build — the plugin handles the rest:
+limbic loads automatically when you start a Claude Code session. Just describe what you want to build — the plugin handles the rest:
 
-1. **You describe a feature** — claude-pm routes to `superpowers:brainstorming`, which produces a PRD saved to the project wiki.
+1. **You describe a feature** — limbic routes to `superpowers:brainstorming`, which produces a PRD saved to the project wiki.
 2. **Structure** — the PRD becomes a wiki page, a GitHub Milestone, story/task issues, and a feature branch
 3. **Dispatch** — parallel agents spawn in isolated worktrees, implement with TDD, and create task PRs targeting the feature branch
 4. **Review** — task PRs are polled for human review, feedback is addressed, approved PRs merge into the feature branch
 5. **Integrate** — the feature branch merges to main, a retrospective wiki page is created, sizing estimates are calibrated, and the milestone closes
 
-All state lives in GitHub Issues, PRs, and Wiki — session crashes are fully recoverable. Run `/pm-status` or simply ask `What's the project status?` in a new Claude Code session to pick up where you left off.
+All state lives in GitHub Issues, PRs, and Wiki — session crashes are fully recoverable. Run `/status` or simply ask `What's the project status?` in a new Claude Code session to pick up where you left off.
 
 ## Setup
 
 ### 1. Install the superpowers plugin (required dependency)
 
-claude-pm depends on [superpowers](https://github.com/obra/superpowers) for brainstorming, TDD, git worktrees, and systematic debugging. Install it first:
+limbic depends on [superpowers](https://github.com/obra/superpowers) for brainstorming, TDD, git worktrees, and systematic debugging. Install it first:
 
 ```
 /plugin marketplace add obra/superpowers
 /plugin install superpowers@obra-superpowers
 ```
 
-### 2. Install claude-pm
+### 2. Install limbic
 
 ```
-/plugin marketplace add corrigantj/claude-pm
-/plugin install claude-pm@corrigantj-claude-pm
+/plugin marketplace add corrigantj/limbic
+/plugin install limbic@corrigantj-limbic
 ```
 
 ### 3. Verify prerequisites
 
-claude-pm needs these to be available in your environment:
+limbic needs these to be available in your environment:
 
 - **GitHub MCP server** — configured in your Claude Code settings (for issue/PR/milestone management)
 - **`gh` CLI** — authenticated (`gh auth status`)
@@ -52,7 +52,7 @@ claude-pm needs these to be available in your environment:
 
 ### 1. Describe What You Want to Build
 
-The `using-pm` skill is loaded automatically on session start. Just describe your project — it routes to `superpowers:brainstorming`, which produces a PRD saved to the project wiki. For example:
+The `using-limbic` skill is loaded automatically on session start. Just describe your project — it routes to `superpowers:brainstorming`, which produces a PRD saved to the project wiki. For example:
 
 ```
 I want to build a user authentication system with Google OAuth
@@ -62,7 +62,7 @@ This kicks off `superpowers:brainstorming` to interactively research and explore
 
 ### 2. Structure into Wiki + GitHub Issues
 
-Once you have a PRD, `/using-pm` routes to `/pm-structure` (or you can invoke it directly):
+Once you have a PRD, `/using-limbic` routes to `/structure` (or you can invoke it directly):
 
 ```
 Structure this PRD into GitHub issues
@@ -78,7 +78,7 @@ This creates:
 ### 3. Dispatch Implementation Agents
 
 ```
-/pm-dispatch or "Start implementing"
+/dispatch or "Start implementing"
 ```
 
 This spawns parallel agents (default: 3), each:
@@ -90,7 +90,7 @@ This spawns parallel agents (default: 3), each:
 ### 4. Check Progress
 
 ```
-/pm-status or "What's the project status?"
+/status or "What's the project status?"
 ```
 
 Dashboard shows: progress bar, sub-issue grouping by story, CI status, blockers, next actions.
@@ -98,7 +98,7 @@ Dashboard shows: progress bar, sub-issue grouping by story, CI status, blockers,
 ### 5. Review and Merge Task PRs
 
 ```
-/pm-review or "Check on task PRs"
+/review or "Check on task PRs"
 ```
 
 Polls task PRs for review status, merges approved PRs into the feature branch, and captures lessons learned for each completed task.
@@ -106,7 +106,7 @@ Polls task PRs for review status, merges approved PRs into the feature branch, a
 ### 6. Integrate and Ship
 
 ```
-/pm-integrate or "Merge the feature branch"
+/integrate or "Merge the feature branch"
 ```
 
 Merges the feature branch to main, creates a retrospective wiki page, calibrates token-based sizing estimates versus actual tokens used to complete work, and closes the milestone.
@@ -115,14 +115,14 @@ Merges the feature branch to main, creates a retrospective wiki page, calibrates
 
 ### Two-Wave PR Model
 
-Task PRs target the feature branch (wave 1, managed by `pm-review`). Once all tasks are merged, the feature branch is merged to main (wave 2, managed by `pm-integrate`). This isolates in-progress work from the main branch and enables parallel development without conflicts.
+Task PRs target the feature branch (wave 1, managed by `review`). Once all tasks are merged, the feature branch is merged to main (wave 2, managed by `integrate`). This isolates in-progress work from the main branch and enables parallel development without conflicts.
 
 ### Wiki Management
 
-claude-pm maintains a project wiki with three page types:
+limbic maintains a project wiki with three page types:
 - **PRD pages** — living design documents with a lifecycle: Draft, In Review, Active, Approved, Superseded
 - **Meta pages** — index pages linking milestones, issues, and PRDs for an epic
-- **Retro pages** — retrospective summaries created during pm-integrate with sizing calibration data
+- **Retro pages** — retrospective summaries created during integrate with sizing calibration data
 
 ### Versioned Epics
 
@@ -130,7 +130,7 @@ Epics use lower-kebab-case naming with semantic versioning: `{epic}-v{Major}.{Mi
 
 ### Token-Based Sizing
 
-Issues are sized based on estimated token consumption, configured as buckets in `.github/pm-config.yaml`. During `pm-integrate`, actual token usage is compared against estimates, and the sizing calibration is updated in the retrospective wiki page. This feedback loop improves future estimates.
+Issues are sized based on estimated token consumption, configured as buckets in `.github/limbic.yaml`. During `integrate`, actual token usage is compared against estimates, and the sizing calibration is updated in the retrospective wiki page. This feedback loop improves future estimates.
 
 ### Label Taxonomy
 
@@ -143,25 +143,25 @@ Labels use a `:` delimiter with standardized prefixes:
 
 ### Sub-Issue Hierarchy
 
-Work is organized as stories containing task and bug sub-issues. Stories represent product-level requirements with Gherkin acceptance criteria. Tasks and bugs are implementation-level work items linked to their parent story via `<!-- pm:parent #N -->` comments.
+Work is organized as stories containing task and bug sub-issues. Stories represent product-level requirements with Gherkin acceptance criteria. Tasks and bugs are implementation-level work items linked to their parent story via `<!-- limbic:parent #N -->` comments.
 
 ## Skill Reference
 
 | Skill | Purpose |
 |-------|---------|
-| `claude-pm:using-pm` | Gateway — kicks off brainstorming, routes to PM skills based on intent |
-| `claude-pm:pm-structure` | Convert PRD into Wiki pages + Milestone + Issues + feature branch |
-| `claude-pm:pm-dispatch` | Spawn parallel agents for ready issues |
-| `claude-pm:pm-status` | Live progress dashboard from GitHub state |
-| `claude-pm:pm-review` | Poll task PRs, merge into feature branch, capture lessons learned |
-| `claude-pm:pm-integrate` | Merge feature branch to main, create retro, calibrate sizing |
+| `limbic:using-limbic` | Gateway — kicks off brainstorming, routes to PM skills based on intent |
+| `limbic:structure` | Convert PRD into Wiki pages + Milestone + Issues + feature branch |
+| `limbic:dispatch` | Spawn parallel agents for ready issues |
+| `limbic:status` | Live progress dashboard from GitHub state |
+| `limbic:review` | Poll task PRs, merge into feature branch, capture lessons learned |
+| `limbic:integrate` | Merge feature branch to main, create retro, calibrate sizing |
 
 ## Configuration
 
-Create `.github/pm-config.yaml` in your project repository:
+Create `.github/limbic.yaml` in your project repository:
 
 ```yaml
-# claude-pm v2 configuration
+# limbic configuration
 # All values shown are defaults and can be omitted if unchanged.
 
 # Project identity (auto-detected from git remote if omitted)
@@ -177,7 +177,7 @@ agents:
 
 # Branch naming
 branches:
-  prefix: pm         # Branches: pm/{issue}-{slug}
+  prefix: limbic     # Branches: limbic/{issue}-{slug}
 
 # Worktree management
 worktrees:
@@ -260,12 +260,12 @@ All values have sensible defaults. The file is optional.
 ## Plugin Structure
 
 ```
-claude-pm/
+limbic/
 ├── .claude-plugin/plugin.json     # Plugin metadata (v0.2.0)
-├── hooks/                         # SessionStart hook loads using-pm (gateway that routes to all other skills)
-├── skills/                        # 6 skills: using-pm, pm-structure, pm-dispatch, pm-status, pm-review, pm-integrate
-│   ├── using-pm/                  # Gateway router — brainstorming entry, capability detection
-│   ├── pm-structure/              # PRD → Wiki + Milestone + Issues + feature branch
+├── hooks/                         # SessionStart hook loads using-limbic (gateway that routes to all other skills)
+├── skills/                        # 6 skills: using-limbic, structure, dispatch, status, review, integrate
+│   ├── using-limbic/              # Gateway router — brainstorming entry, capability detection
+│   ├── structure/                 # PRD → Wiki + Milestone + Issues + feature branch
 │   │   ├── story-template.md      # Product story template
 │   │   ├── task-template.md       # Dev task sub-issue template
 │   │   ├── bug-template.md        # Bug sub-issue template
@@ -273,14 +273,14 @@ claude-pm/
 │   │   ├── meta-template.md       # Wiki meta page template
 │   │   ├── pr-body-template.md    # PR body template
 │   │   └── gherkin-guide.md       # BDD scenario writing guide
-│   ├── pm-dispatch/               # Spawn parallel agents on feature branch
-│   ├── pm-status/                 # Progress dashboard with sub-issue grouping
-│   ├── pm-review/                 # Task PR polling, merge to feature branch, lessons learned
+│   ├── dispatch/                  # Spawn parallel agents on feature branch
+│   ├── status/                    # Progress dashboard with sub-issue grouping
+│   ├── review/                    # Task PR polling, merge to feature branch, lessons learned
 │   │   └── polling-prompt.md      # Polling sub-agent prompt template
-│   └── pm-integrate/              # Feature→main PR, retro, wiki update, calibration
+│   └── integrate/                 # Feature→main PR, retro, wiki update, calibration
 │       └── retro-template.md      # Retrospective wiki page template
-├── agents/pm-implementer.md       # Subordinate agent: 9-phase TDD workflow
-├── templates/pm-config.yaml       # Configuration schema with sizing buckets
+├── agents/implementer.md          # Subordinate agent: 9-phase TDD workflow
+├── templates/limbic.yaml          # Configuration schema with sizing buckets
 ├── CLAUDE.md
 ├── LICENSE
 └── README.md

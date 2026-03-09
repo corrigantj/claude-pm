@@ -1,9 +1,9 @@
 ---
-name: using-pm
+name: using-limbic
 description: Use when managing multi-issue projects — mounts PM capabilities, routes to brainstorming for new work, then PM skills for structuring, dispatching, reviewing, and integrating
 ---
 
-# Project Management with claude-pm
+# Project Management with limbic
 
 You have project management capabilities. When the user's task involves planning, decomposing, tracking, or delivering a multi-issue project, use the PM skills below.
 
@@ -23,7 +23,7 @@ On first invocation of any PM skill in a session, detect and cache these capabil
 | Capability | How to Detect | Fallback |
 |---|---|---|
 | **Issue Types** | Org-owned repo: attempt `gh api repos/{owner}/{repo}/issue-types`; 200 = available | Skip issue type assignment |
-| **Sub-issues API** | Test `gh api repos/{owner}/{repo}/issues/1/sub_issues` (404 is fine, check for 422 vs 404) | Use `<!-- pm:blocked-by -->` comments for dependencies |
+| **Sub-issues API** | Test `gh api repos/{owner}/{repo}/issues/1/sub_issues` (404 is fine, check for 422 vs 404) | Use `<!-- limbic:blocked-by -->` comments for dependencies |
 | **Wiki enabled** | `gh api repos/{owner}/{repo} --jq '.has_wiki'` returns `true` | Warn user; PRD storage falls back to `docs/plans/` |
 
 Store results so subsequent skill invocations within the same session skip re-detection.
@@ -32,27 +32,27 @@ Store results so subsequent skill invocations within the same session skip re-de
 
 | User Intent | Skill | When |
 |---|---|---|
-| New feature / project / "plan this" | `superpowers:brainstorming` then `claude-pm:pm-structure` | Always start with brainstorming for new work, then structure |
-| "Break this down" / has a PRD | `claude-pm:pm-structure` | Convert PRD into Wiki page + Milestone + Issues + feature branch |
-| "Start working" / "Dispatch" | `claude-pm:pm-dispatch` | Spawn parallel agents, task branches off feature branch |
-| "What's the status?" | `claude-pm:pm-status` | Dashboard from GitHub state (anytime, crash recovery) |
-| "Review PRs" / "Check feedback" | `claude-pm:pm-review` | Poll task PRs, merge into feature branch, capture lessons learned |
-| "Merge" / "Ship it" / "Integrate" | `claude-pm:pm-integrate` | Feature branch to main PR, retro, wiki update, close milestone |
+| New feature / project / "plan this" | `superpowers:brainstorming` then `limbic:structure` | Always start with brainstorming for new work, then structure |
+| "Break this down" / has a PRD | `limbic:structure` | Convert PRD into Wiki page + Milestone + Issues + feature branch |
+| "Start working" / "Dispatch" | `limbic:dispatch` | Spawn parallel agents, task branches off feature branch |
+| "What's the status?" | `limbic:status` | Dashboard from GitHub state (anytime, crash recovery) |
+| "Review PRs" / "Check feedback" | `limbic:review` | Poll task PRs, merge into feature branch, capture lessons learned |
+| "Merge" / "Ship it" / "Integrate" | `limbic:integrate` | Feature branch to main PR, retro, wiki update, close milestone |
 
 ## The Flow
 
 ```
 1. brainstorming → PRD file (use superpowers:brainstorming)
-2. claude-pm:pm-structure → Wiki PRD + Meta page + Milestone + Issues + feature branch
-3. claude-pm:pm-dispatch → Spawn agents (task branches off feature branch)
-4. claude-pm:pm-status → Progress dashboard (run anytime, crash recovery)
-5. claude-pm:pm-review → Task PRs reviewed, merged into feature branch, lessons learned
-6. claude-pm:pm-integrate → Feature branch → main PR, retro, wiki update, close milestone
+2. limbic:structure → Wiki PRD + Meta page + Milestone + Issues + feature branch
+3. limbic:dispatch → Spawn agents (task branches off feature branch)
+4. limbic:status → Progress dashboard (run anytime, crash recovery)
+5. limbic:review → Task PRs reviewed, merged into feature branch, lessons learned
+6. limbic:integrate → Feature branch → main PR, retro, wiki update, close milestone
 ```
 
 ## Configuration
 
-PM skills read `.github/pm-config.yaml` from the project root. If absent, sensible defaults apply. The file is optional.
+PM skills read `.github/limbic.yaml` from the project root. If absent, sensible defaults apply. The file is optional.
 
 Key configuration sections:
 - **wiki** — PRD storage format, meta-page template, auto-publish settings
@@ -60,7 +60,7 @@ Key configuration sections:
 - **review** — Polling interval, auto-merge criteria, lessons learned format
 - **validation** — Pre-dispatch checks, acceptance criteria enforcement, PR quality gates
 
-See `templates/pm-config.yaml` in this plugin for the full schema and defaults.
+See `templates/limbic.yaml` in this plugin for the full schema and defaults.
 
 ## When to Route to PM Skills
 
@@ -78,4 +78,4 @@ See `templates/pm-config.yaml` in this plugin for the full schema and defaults.
 
 ## Recovery
 
-If a session crashes mid-project, run `claude-pm:pm-status` in a new session. It reconstructs full project state from GitHub Issues and PRs — no context lost.
+If a session crashes mid-project, run `limbic:status` in a new session. It reconstructs full project state from GitHub Issues and PRs — no context lost.

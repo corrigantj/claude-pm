@@ -1,6 +1,6 @@
 # PR Body Template
 
-Used by pm-implementer agents when creating pull requests. Replace placeholders.
+Used by implementer agents when creating pull requests. Replace placeholders.
 
 ---
 

@@ -1,22 +1,22 @@
 ---
-name: pm-dispatch
-description: Use when ready to start implementation — spawns parallel pm-implementer agents for issues that have no unresolved dependencies, targeting the feature branch and injecting mustread context into each agent
+name: dispatch
+description: Use when ready to start implementation — spawns parallel implementer agents for issues that have no unresolved dependencies, targeting the feature branch and injecting mustread context into each agent
 ---
 
-# pm-dispatch — Spawn Implementation Agents
+# dispatch — Spawn Implementation Agents
 
 **Type:** Rigid. Follow this process exactly.
 
 ## Inputs
 
-- A GitHub Milestone with issues created by `claude-pm:pm-structure`
+- A GitHub Milestone with issues created by `limbic:structure`
 - Access to the project repository (GitHub MCP + gh CLI)
 
 ## Checklist
 
 You MUST create a task for each of these items and complete them in order:
 
-1. **Read configuration** — load pm-config.yaml, auto-detect build commands (Step 1)
+1. **Read configuration** — load limbic.yaml, auto-detect build commands (Step 1)
 2. **Fetch issues and build dependency graph** — collect milestone issues, parse dependencies, build DAG (Steps 2-3)
 3. **Identify parallelizable batch** — find ready issues, check file overlaps, apply priority/size sort (Step 4)
 4. **Present dispatch plan** — show batch table with branch names, file overlap check, get approval if gated (Step 5)
@@ -27,13 +27,13 @@ You MUST create a task for each of these items and complete them in order:
 
 ### Step 1: Read Configuration
 
-Read `.github/pm-config.yaml` from the project root. Extract or use defaults:
+Read `.github/limbic.yaml` from the project root. Extract or use defaults:
 ```yaml
 agents:
   max_parallel: 3
   model: opus
 branches:
-  prefix: pm
+  prefix: limbic
   feature: ""        # e.g. feature/auth-v1 — REQUIRED
 worktrees:
   directory: .worktrees
@@ -74,14 +74,14 @@ Filter to issues belonging to the target milestone. Then:
 2. **Collect `meta:mustread` issues separately** — issues with the `meta:mustread` label are context documents, not work items. Read their full bodies; these will be injected into each agent's prompt context.
 3. **For remaining work items**, collect:
    - Issue number, title, body, labels
-   - Parse `<!-- pm:blocked-by #N, #M -->` from each issue body
-   - Parse `<!-- pm:parent #NN -->` from each issue body
+   - Parse `<!-- limbic:blocked-by #N, #M -->` from each issue body
+   - Parse `<!-- limbic:parent #NN -->` from each issue body
 
 ### Step 3: Build Dependency Graph
 
-For each work item issue, extract dependencies from `<!-- pm:blocked-by ... -->` comments.
+For each work item issue, extract dependencies from `<!-- limbic:blocked-by ... -->` comments.
 
-Parse `<!-- pm:parent #NN -->` comments to understand story-to-task hierarchy. Walk parent-to-child relationships for task-level dependency resolution: if a parent story has a `blocked-by`, all its child tasks inherit that dependency.
+Parse `<!-- limbic:parent #NN -->` comments to understand story-to-task hierarchy. Walk parent-to-child relationships for task-level dependency resolution: if a parent story has a `blocked-by`, all its child tasks inherit that dependency.
 
 Build a directed acyclic graph (DAG):
 - Nodes = issues (work items only, not mustread or ignore)
@@ -135,13 +135,13 @@ For each issue in the batch:
 
 2. **Generate worktree path:** `{worktree_dir}/{branch_prefix}/{issue_number}-{slug}`
 
-3. **Worktree creation is delegated to the agent** — the pm-implementer agent creates its own worktree via `superpowers:using-git-worktrees` in Phase 1. pm-dispatch does NOT create the worktree or branch; it only provides the branch name and worktree path in the agent prompt.
+3. **Worktree creation is delegated to the agent** — the implementer agent creates its own worktree via `superpowers:using-git-worktrees` in Phase 1. dispatch does NOT create the worktree or branch; it only provides the branch name and worktree path in the agent prompt.
 
 4. **Label the issue** `status:in-progress` (remove `status:ready`)
 
-5. **Read the implementer prompt template** from `skills/pm-dispatch/implementer-prompt.md` in this plugin
+5. **Read the implementer prompt template** from `skills/dispatch/implementer-prompt.md` in this plugin
 
-6. **Read the PR body template** from `skills/pm-structure/pr-body-template.md` in this plugin
+6. **Read the PR body template** from `skills/structure/pr-body-template.md` in this plugin
 
 7. **Read `meta:mustread` issue bodies** collected in Step 2 and prepare them as a combined block for injection into the agent prompt under "Must-Read Context"
 
@@ -159,7 +159,7 @@ For each issue in the batch:
 
 10. **Spawn the agent** using the Task tool:
     ```
-    Task tool with subagent_type: "pm-implementer"
+    Task tool with subagent_type: "implementer"
     prompt: {filled implementer prompt}
     model: {from config, default opus}
     ```
@@ -191,7 +191,7 @@ After all agents in the batch complete:
 4. **Check for next batch** — re-run Step 4 to identify newly-unblocked issues
    - If more issues are ready, ask: "Ready to dispatch next batch?" (or auto-dispatch if gate is off)
    - If no more issues ready and some are blocked, suggest investigating blockers
-   - If all issues are in-review or done, suggest `claude-pm:pm-review`
+   - If all issues are in-review or done, suggest `limbic:review`
 
 ## Slug Generation
 
@@ -213,7 +213,7 @@ Rules:
 
 ## Worktree Lifecycle
 
-Worktrees are created by the pm-implementer agent (Phase 1) and need lifecycle management across dispatch, review, and integration.
+Worktrees are created by the implementer agent (Phase 1) and need lifecycle management across dispatch, review, and integration.
 
 ### Before Dispatch: Existence Check
 
@@ -233,16 +233,16 @@ git worktree list | grep "{worktree_path}"
 If an agent returns `status: error` or `status: blocked`:
 - The worktree is left in place (it may contain useful diagnostic state)
 - If the issue is re-dispatched later, the existence check above handles cleanup
-- If the issue is abandoned, worktree is cleaned up during `claude-pm:pm-integrate` Step 14
+- If the issue is abandoned, worktree is cleaned up during `limbic:integrate` Step 14
 
-### During Review (pm-review Step 4)
+### During Review (review Step 4)
 
-When `claude-pm:pm-review` needs to address feedback on a task PR:
+When `limbic:review` needs to address feedback on a task PR:
 1. Check if the worktree still exists at the original path
 2. If yes: reuse it (navigate to it, pull latest)
 3. If no: re-create it from the task branch (`git worktree add {path} {branch_name}`)
 
-### After Integration (pm-integrate Step 14)
+### After Integration (integrate Step 14)
 
 All worktrees for the milestone are cleaned up after merge:
 ```bash
@@ -256,7 +256,7 @@ git worktree prune
 2. **File overlap = sequential** — issues touching the same files must be in different batches
 3. **Check dependencies are truly resolved** — a closed issue with a reverted PR is NOT resolved
 4. **Each agent gets a fresh context** — pass all needed information in the prompt, don't assume shared state
-5. **Use the Task tool** — agents are spawned via `Task` with `subagent_type: "pm-implementer"`, NOT via bash
+5. **Use the Task tool** — agents are spawned via `Task` with `subagent_type: "implementer"`, NOT via bash
 6. **Branch from the feature branch** — never branch from main; agents PR back to the feature branch
 7. **Inject mustread context** — every agent receives the bodies of all `meta:mustread` issues as context
 8. **Check worktree existence** before dispatch — handle re-dispatch and conflict scenarios

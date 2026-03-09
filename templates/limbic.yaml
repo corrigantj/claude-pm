@@ -1,5 +1,5 @@
-# claude-pm v2 configuration
-# Place this file at .github/pm-config.yaml in your project repository.
+# limbic configuration
+# Place this file at .github/limbic.yaml in your project repository.
 # All values shown are defaults and can be omitted if unchanged.
 
 # ─── Project identity ───────────────────────────────────────────────────────
@@ -11,18 +11,18 @@ project:
   base_branch: ""  # Default branch (auto-detected from HEAD)
 
 # ─── Agent execution ────────────────────────────────────────────────────────
-# Controls how pm-implementer agents are spawned during pm:dispatch.
+# Controls how implementer agents are spawned during dispatch.
 agents:
-  max_parallel: 3  # Maximum concurrent pm-implementer agents
+  max_parallel: 3  # Maximum concurrent implementer agents
   model: opus      # Model for spawned agents (opus | sonnet)
 
 # ─── Branch naming ──────────────────────────────────────────────────────────
 # Branches are created as {prefix}/{issue-number}-{slug}.
 branches:
-  prefix: pm       # Branch prefix: pm/{issue-number}-{slug}
+  prefix: limbic   # Branch prefix: limbic/{issue-number}-{slug}
 
 # ─── Worktree management ────────────────────────────────────────────────────
-# Each pm-implementer agent works in its own git worktree to avoid conflicts.
+# Each implementer agent works in its own git worktree to avoid conflicts.
 worktrees:
   directory: .worktrees  # Worktree root relative to repo
 
@@ -37,9 +37,9 @@ approval_gates:
 
 # ─── Merge strategy ─────────────────────────────────────────────────────────
 # Two-wave model uses separate strategies for task PRs and feature PRs.
-# task_strategy: how task PRs merge into the feature branch (wave 1, pm-review)
+# task_strategy: how task PRs merge into the feature branch (wave 1, review)
 #   Default: rebase — task PRs always rebase into feature branch for clean history.
-# feature_strategy: how the feature branch merges into the base branch (wave 2, pm-integrate)
+# feature_strategy: how the feature branch merges into the base branch (wave 2, integrate)
 #   Default: squash — collapses the feature branch into a single commit on main.
 merge:
   task_strategy: rebase    # squash | merge | rebase (wave 1: task → feature)
@@ -63,9 +63,9 @@ labels: []
   #   description: "Frontend changes"
 
 # ─── Wiki management ────────────────────────────────────────────────────────
-# claude-pm v2 maintains a project wiki with architecture docs, decision logs,
+# limbic maintains a project wiki with architecture docs, decision logs,
 # and living PRD pages. The wiki repo is cloned as a sibling directory.
-# meta_page and prd are populated by pm-structure and used by pm-dispatch
+# meta_page and prd are populated by structure and used by dispatch
 # to inject context into agent prompts. Leave empty to auto-derive from
 # the epic name (e.g., wiki/{Epic-Name}.md and wiki/PRD-{epic}-v{Major}.md).
 wiki:
@@ -82,14 +82,14 @@ epics:
 
 # ─── Validation ──────────────────────────────────────────────────────────────
 # Pre-flight validation checks before structuring or dispatching.
-# When enabled, pm:structure validates the PRD and dependency graph.
+# When enabled, structure validates the PRD and dependency graph.
 # Strict mode treats warnings as errors.
 validation:
   enabled: true   # Run validation checks
   strict: false   # Treat warnings as errors
 
 # ─── Review polling ──────────────────────────────────────────────────────────
-# Controls how pm:status monitors open PRs for review state changes.
+# Controls how status monitors open PRs for review state changes.
 # A lightweight model polls GitHub at the configured interval.
 review:
   polling_interval: 60    # Seconds between review-state polls
@@ -100,7 +100,7 @@ review:
 # ─── Sizing ──────────────────────────────────────────────────────────────────
 # Token-based sizing determines the size/ label assigned to each issue.
 # Buckets define label descriptions and calibration ranges.
-# token_ranges provides a flat lookup used by pm-dispatch to inject sizing
+# token_ranges provides a flat lookup used by dispatch to inject sizing
 # context into agent prompts. Auto-derived from buckets if empty.
 # An upper of null means unbounded (xl issues should be split).
 sizing:

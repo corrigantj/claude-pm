@@ -1,17 +1,17 @@
 ---
-name: pm-review
-description: Use after pm-dispatch agents create PRs — polls for human review activity on task PRs targeting the feature branch, addresses feedback, merges approved PRs, captures lessons learned with token calibration
+name: review
+description: Use after dispatch agents create PRs — polls for human review activity on task PRs targeting the feature branch, addresses feedback, merges approved PRs, captures lessons learned with token calibration
 ---
 
-# pm-review — Poll Reviews, Address Feedback, Merge Task PRs
+# review — Poll Reviews, Address Feedback, Merge Task PRs
 
 **Type:** Rigid. Follow this process exactly.
 
 ## Inputs
 
-- A feature branch with open task PRs (created by `claude-pm:pm-dispatch`)
+- A feature branch with open task PRs (created by `limbic:dispatch`)
 - Access to the project repository (GitHub MCP + gh CLI)
-- Configuration from `.github/pm-config.yaml` (review section)
+- Configuration from `.github/limbic.yaml` (review section)
 
 ## Checklist
 
@@ -103,7 +103,7 @@ For each requested change or comment:
 
 ### Step 6: Append Review Data to Lessons Learned
 
-After merge, find the existing `## Lessons Learned` comment on the **task issue** (posted by the pm-implementer agent during implementation). Append review-round data to it:
+After merge, find the existing `## Lessons Learned` comment on the **task issue** (posted by the implementer agent during implementation). Append review-round data to it:
 
 ```markdown
 - **Review rounds:** {count of review cycles}
@@ -130,7 +130,7 @@ If no `## Lessons Learned` comment exists (e.g., agent crashed before posting), 
 
 After merge, update the parent story's Scenario Acceptance Tracker:
 
-1. Find the parent story (from `<!-- pm:parent #NN -->` in the task body or sub-issue relationship)
+1. Find the parent story (from `<!-- limbic:parent #NN -->` in the task body or sub-issue relationship)
 2. For each scenario this task addressed, update the tracker table:
    - Status `-` to `done` and link the task/PR
    - If bugs were filed during implementation, status `-` to `bug` and link the bug issue
@@ -156,8 +156,8 @@ After all current PRs in this cycle are processed:
 ```
 
 3. Recommend next action:
-   - If newly unblocked tasks: "Run `claude-pm:pm-dispatch` to start next batch"
-   - If all task PRs merged: "Run `claude-pm:pm-integrate` to merge feature branch to main"
+   - If newly unblocked tasks: "Run `limbic:dispatch` to start next batch"
+   - If all task PRs merged: "Run `limbic:integrate` to merge feature branch to main"
    - If PRs still awaiting review: "Waiting for human review on {list}"
 
 ## Important Rules
@@ -168,5 +168,5 @@ After all current PRs in this cycle are processed:
 4. **Append review data to Lessons Learned on every merged PR** — no exceptions, this feeds the full retrospective
 5. **Polling sub-agent uses cheapest model** — it only detects changes, doesn't reason about code
 6. **If PR is closed/rejected** — report to user and stop processing that PR
-7. **All skill references** use `claude-pm:pm-{skill}` format
+7. **All skill references** use `limbic:{skill}` format
 8. **All label references** use `:` delimiter

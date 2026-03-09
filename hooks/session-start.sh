@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SessionStart hook for claude-pm plugin
+# SessionStart hook for limbic plugin
 
 set -euo pipefail
 
@@ -7,8 +7,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# Read using-pm content
-using_pm_content=$(cat "${PLUGIN_ROOT}/skills/using-pm/SKILL.md" 2>&1 || echo "Error reading using-pm skill")
+# Read using-limbic content
+using_limbic_content=$(cat "${PLUGIN_ROOT}/skills/using-limbic/SKILL.md" 2>&1 || echo "Error reading using-limbic skill")
 
 # Escape string for JSON embedding
 escape_for_json() {
@@ -21,8 +21,8 @@ escape_for_json() {
     printf '%s' "$s"
 }
 
-using_pm_escaped=$(escape_for_json "$using_pm_content")
-session_context="<PM_PLUGIN>\nYou have project management capabilities via the claude-pm plugin.\n\n**Below is the full content of your 'claude-pm:using-pm' skill. For all PM skills, use the 'Skill' tool:**\n\n${using_pm_escaped}\n</PM_PLUGIN>"
+using_limbic_escaped=$(escape_for_json "$using_limbic_content")
+session_context="<LIMBIC_PLUGIN>\nYou have project management capabilities via the limbic plugin.\n\n**Below is the full content of your 'limbic:using-limbic' skill. For all PM skills, use the 'Skill' tool:**\n\n${using_limbic_escaped}\n</LIMBIC_PLUGIN>"
 
 # Output context injection as JSON
 cat <<EOF

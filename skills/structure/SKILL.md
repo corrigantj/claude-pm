@@ -1,9 +1,9 @@
 ---
-name: pm-structure
+name: structure
 description: Use when converting a PRD or design document into a GitHub Wiki PRD, Meta page, Milestone with feature branch, and dependency-ordered Stories with dev task sub-issues
 ---
 
-# pm-structure -- PRD to GitHub Artifacts
+# structure -- PRD to GitHub Artifacts
 
 **Type:** Rigid. Follow this process exactly.
 
@@ -16,7 +16,7 @@ description: Use when converting a PRD or design document into a GitHub Wiki PRD
 
 You MUST create a task for each of these items and complete them in order:
 
-1. **Parse PRD and read configuration** — extract epic name, stories, dependencies; read pm-config.yaml (Steps 1-3)
+1. **Parse PRD and read configuration** — extract epic name, stories, dependencies; read limbic.yaml (Steps 1-3)
 2. **Validate inputs** — check PRD sections, story completeness, milestone uniqueness, size sanity (Step 4)
 3. **Create wiki pages** — PRD page, meta page, Home page, templates; commit and push (Step 5)
 4. **Create labels and milestone** — epic label, label taxonomy, milestone with PRD link (Steps 6-8)
@@ -39,7 +39,7 @@ If the PRD is ambiguous, ask the user for clarification before proceeding.
 
 ### Step 2: Read Configuration
 
-Read `.github/pm-config.yaml` from the project root. Extract:
+Read `.github/limbic.yaml` from the project root. Extract:
 - **Wiki settings** -- `wiki.auto_clone`, template paths
 - **Sizing buckets** -- `sizing.buckets` with token ranges (lower/upper) and descriptions
 - **Validation settings** -- `validation.enabled`, required PRD sections
@@ -108,7 +108,7 @@ git clone --depth 1 https://github.com/{owner}/{repo}.wiki.git {wiki_directory} 
 ```
 
 If the clone fails (wiki disabled, permissions error, network failure):
-- **Wiki disabled (404):** Warn the user: "Wiki is not enabled on this repository. Skipping wiki pages (PRD, meta page, templates). Enable wiki in repository settings and re-run pm-structure to create wiki pages." Continue with Steps 6+ (labels, milestone, issues).
+- **Wiki disabled (404):** Warn the user: "Wiki is not enabled on this repository. Skipping wiki pages (PRD, meta page, templates). Enable wiki in repository settings and re-run structure to create wiki pages." Continue with Steps 6+ (labels, milestone, issues).
 - **Permission denied:** Report the error and stop. The user must fix repository access.
 - **Network failure:** Retry once after 5 seconds. If still failing, report and stop.
 
@@ -129,7 +129,7 @@ Respect `approval_gates.before_wiki_update` -- if set, confirm with user before 
 
 ```bash
 git -C {wiki_directory} add -A
-git -C {wiki_directory} commit -m "pm-structure: add PRD and meta page for {epic} v{Major}"
+git -C {wiki_directory} commit -m "structure: add PRD and meta page for {epic} v{Major}"
 git -C {wiki_directory} push origin master
 ```
 
@@ -183,7 +183,7 @@ Use `:` delimiter (NOT `/`). Create via `gh label create --force`:
 - `backlog:later` (color: `ededed`, description: "Future sprint")
 - `backlog:icebox` (color: `ededed`, description: "Deprioritized")
 
-Also create any custom labels from `pm-config.yaml`.
+Also create any custom labels from `limbic.yaml`.
 
 Run label creation as a batch:
 ```bash
@@ -257,13 +257,13 @@ For each story, create dev tasks as sub-issues. Compose bodies using `task-templ
 - **Parent link** -- `#{parent_issue_number}`
 - **Scenarios addressed** -- which parent scenarios (S1, S2, etc.) this task covers
 - **Objective** -- one sentence describing what this task produces
-- **Files Likely Affected** -- bulleted list of file paths this task will create or modify (used by `claude-pm:pm-dispatch` for file-overlap detection and by `pm-implementer` as a scope guardrail)
+- **Files Likely Affected** -- bulleted list of file paths this task will create or modify (used by `limbic:dispatch` for file-overlap detection and by `implementer` as a scope guardrail)
 - **Implementation notes** -- function signatures, architectural decisions
 - **Done when** -- concrete, verifiable checklist items
 
 If Sub-issues API is available, create tasks as sub-issues of their parent story.
 
-If Sub-issues API is unavailable, create as regular issues with `<!-- pm:parent #NN -->` in the body to link to the parent story.
+If Sub-issues API is unavailable, create as regular issues with `<!-- limbic:parent #NN -->` in the body to link to the parent story.
 
 **Always assign tasks to the milestone** created in Step 8, regardless of whether they are sub-issues or regular issues. Sub-issues do not inherit milestone assignment from their parent.
 
@@ -278,10 +278,10 @@ Use Issue Type `task` if available, otherwise apply `type:task` label.
 
 For each story that depends on other stories, ensure the body contains:
 ```html
-<!-- pm:blocked-by #12, #15 -->
+<!-- limbic:blocked-by #12, #15 -->
 ```
 
-This HTML comment is invisible to human readers but machine-parseable by `claude-pm:pm-dispatch`.
+This HTML comment is invisible to human readers but machine-parseable by `limbic:dispatch`.
 
 Also label dependent stories as `status:blocked` (not `status:ready`).
 
@@ -345,7 +345,7 @@ Output a summary for the user:
 |---|-------|-----------|
 | {number} | {title} | #{deps} |
 
-**Next:** invoke `claude-pm:pm-dispatch` to start implementation.
+**Next:** invoke `limbic:dispatch` to start implementation.
 ```
 
 ## Important Rules
@@ -358,4 +358,4 @@ Output a summary for the user:
 6. **One behavior per story** -- split if covering multiple behaviors
 7. **Validation must pass before creation** -- measure twice, cut once (Step 4)
 8. **Approved/Superseded PRDs cannot be modified** -- create a new version instead
-9. **All skill references use `claude-pm:pm-{skill}` format**
+9. **All skill references use `limbic:{skill}` format**

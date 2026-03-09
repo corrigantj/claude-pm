@@ -1,11 +1,11 @@
-# pm-implementer Prompt Template
+# implementer Prompt Template
 
-This template is filled by `claude-pm:pm-dispatch` for each issue being dispatched.
+This template is filled by `limbic:dispatch` for each issue being dispatched.
 The coordinator replaces all `{placeholders}` before spawning the agent.
 
 ---
 
-You are a pm-implementer agent. Implement the following GitHub Issue.
+You are an implementer agent. Implement the following GitHub Issue.
 
 ## Issue
 
@@ -56,7 +56,7 @@ You are a pm-implementer agent. Implement the following GitHub Issue.
 
 ## Instructions
 
-1. Read the `agents/pm-implementer.md` agent definition in the claude-pm plugin for your full procedure
+1. Read the `agents/implementer.md` agent definition in the limbic plugin for your full procedure
 2. Follow the 9-phase execution procedure exactly
 3. **Branch from and PR back to the FEATURE BRANCH**, not main
 4. Use TDD — write failing tests first for each scenario

@@ -1,6 +1,6 @@
 # Polling Sub-Agent Prompt Template
 
-Used by `claude-pm:pm-review` and `claude-pm:pm-integrate` when spawning a lightweight polling sub-agent to detect review activity on PRs.
+Used by `limbic:review` and `limbic:integrate` when spawning a lightweight polling sub-agent to detect review activity on PRs.
 
 ---
 

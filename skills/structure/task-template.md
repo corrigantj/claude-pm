@@ -1,6 +1,6 @@
 # Dev Task Template
 
-Used by `claude-pm:pm-structure` when creating dev task sub-issues under a product story. Replace `{placeholders}` with actual content.
+Used by `limbic:structure` when creating dev task sub-issues under a product story. Replace `{placeholders}` with actual content.
 
 ---
 
@@ -13,7 +13,7 @@ Used by `claude-pm:pm-structure` when creating dev task sub-issues under a produ
 
 ## Files Likely Affected
 
-<!-- pm-dispatch parses this list for file-overlap detection between tasks -->
+<!-- dispatch parses this list for file-overlap detection between tasks -->
 - `{path/to/file1}`
 - `{path/to/file2}`
 

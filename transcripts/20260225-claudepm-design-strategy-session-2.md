@@ -1,6 +1,4 @@
-# Claude PM Skill Review Transcript
-
-Impromptu Google Meet Meeting - February 25
+# 20260225 Claude PM Design Strategy - Session 2 - February 25
 VIEW RECORDING - 24 mins (No highlights): https://fathom.video/share/Jjt-PJC-oEdMEwiR6f7yN5skps-Do6Nu
 
 ---

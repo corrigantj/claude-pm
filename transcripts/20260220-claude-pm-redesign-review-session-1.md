@@ -1,4 +1,4 @@
-Impromptu Google Meet Meeting - February 20
+20260220 Claude PM Redesign Review - Session 1 - February 20
 VIEW RECORDING - 99 mins (No highlights): https://fathom.video/share/vHSNy5xFB_v61DAC74xCu-qFStLAzfec
 
 ---

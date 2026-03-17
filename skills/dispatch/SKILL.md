@@ -49,6 +49,9 @@ wiki:
   prd: ""            # auto-derived from epic name if empty: {wiki_directory}/PRD-{epic}-v{Major}.md
 sizing:
   token_ranges: {}   # auto-derived from sizing.buckets if empty: { "size:xs": [1000, 10000], ... }
+project:
+  board_number:    # GitHub Project number
+  board_title: ""  # GitHub Project title
 review:
   auto_request: false
   reviewers: []      # GitHub usernames to request review from
@@ -126,6 +129,16 @@ Approve dispatch? (The agents will create branches off the feature branch, imple
 
 If approval gate is off, announce the batch but proceed immediately.
 
+### Step 5a: Resolve Board Field IDs
+
+Before dispatching, resolve board field IDs (once per dispatch invocation):
+
+1. Project node ID: `gh project view {board_number} --owner {owner} --format json --jq '.id'`
+2. Status field ID: `gh project field-list {board_number} --owner {owner} --format json --jq '.fields[] | select(.name == "Status") | .id'`
+3. Option IDs: `gh project field-list {board_number} --owner {owner} --format json --jq '.fields[] | select(.name == "Status") | .options[]'` — extract IDs for "In Progress" and "In Review"
+
+These IDs are stable for the duration of a dispatch invocation.
+
 ### Step 6: Dispatch Agents
 
 For each issue in the batch:
@@ -138,6 +151,14 @@ For each issue in the batch:
 3. **Worktree creation is delegated to the agent** — the implementer agent creates its own worktree via `superpowers:using-git-worktrees` in Phase 1. dispatch does NOT create the worktree or branch; it only provides the branch name and worktree path in the agent prompt.
 
 4. **Label the issue** `status:in-progress` (remove `status:ready`)
+
+4a. **Update board status** — query the issue's item ID on the board, then set Status to "In Progress":
+    ```bash
+    # Get item ID
+    gh project item-list {board_number} --owner {owner} --format json --jq '.items[] | select(.content.number == {issue_number}) | .id'
+    # Set status
+    gh project item-edit --id {item_id} --field-id {status_field_id} --project-id {project_node_id} --single-select-option-id {in_progress_option_id}
+    ```
 
 5. **Read the implementer prompt template** from `skills/dispatch/implementer-prompt.md` in this plugin
 
@@ -156,6 +177,7 @@ For each issue in the batch:
    - Must-Read Context (mustread issue bodies, or "None" if no mustread issues)
    - Context Chain (wiki meta page excerpt, PRD excerpt)
    - Size label and token range from `sizing.token_ranges`
+   - Board IDs for implementer: project node ID, Status field ID, "In Review" option ID, board_number, owner
 
 10. **Spawn the agent** using the Task tool:
     ```

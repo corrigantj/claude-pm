@@ -21,7 +21,7 @@ You MUST create a task for each of these items and complete them in order:
 3. **Create wiki pages** — PRD page, meta page, Home page, templates; commit and push (Step 5)
 4. **Create epic label and milestone** — per-epic label, milestone with PRD link (Steps 6-7)
 5. **Create feature branch** — branch from base branch and push (Step 8)
-6. **Create stories and tasks** — stories with BDD scenarios, dev tasks as sub-issues, dependency annotations (Steps 9-11)
+6. **Create stories and tasks** — stories with BDD scenarios, dev tasks as sub-issues, dependency annotations, add all to project board (Steps 9-11a)
 7. **Validate and finalize** — post-creation validation, update PRD status to Active, present summary (Steps 12-14)
 
 ## Process
@@ -44,6 +44,7 @@ Read `.github/limbic.yaml` from the project root. Extract:
 - **Sizing buckets** -- `sizing.buckets` with token ranges (lower/upper) and descriptions
 - **Validation settings** -- `validation.enabled`, required PRD sections
 - **Approval gates** -- `approval_gates.before_wiki_update`, etc.
+- **Board settings** -- `project.board_number`, `project.board_title`
 
 Auto-detect owner/repo from git remote if not configured:
 ```bash
@@ -164,6 +165,7 @@ Feature branch: feature/{epic}-v{Major}" \
 The milestone description **must** include:
 - Link to the PRD wiki page
 - Feature branch name
+- Project board URL: `https://github.com/{users|orgs}/{owner}/projects/{board_number}` (determine `users/` vs `orgs/` via `gh api users/{owner} --jq '.type'`)
 
 If a milestone with this title already exists, use it instead of creating a duplicate.
 
@@ -247,6 +249,20 @@ Dependencies must be annotated both ways:
 - The HTML comment in the issue body (for machine parsing)
 - The `status:blocked` label (for visual scanning)
 
+### Step 11a: Add Issues to Project Board
+
+Read `board_number` from config. For each created issue (stories and tasks):
+
+```bash
+gh project item-add {board_number} --owner {owner} --url https://github.com/{owner}/{repo}/issues/{issue_number}
+```
+
+`gh project item-add` is idempotent — adding an already-added issue is a no-op, so retries are safe.
+
+If an individual `item-add` fails (rate limit, transient error), log a warning and continue with remaining issues. Do not fail the entire structure run — issues and milestone are the critical artifacts, the board is supplementary.
+
+The "Item added to project" workflow automation automatically sets the board Status to Ready.
+
 ### Step 12: Post-Creation Validation
 
 After all artifacts are created, verify each one:
@@ -267,6 +283,7 @@ After all artifacts are created, verify each one:
 **Milestone must have:**
 - PRD link in description
 - Feature branch name in description
+- Project board URL in description
 
 Report any validation failures. Fix them before proceeding.
 
@@ -288,6 +305,7 @@ Output a summary for the user:
 **Feature branch:** feature/{epic}-v{Major}
 **Wiki PRD:** [PRD-{epic}-v{X}](../../wiki/PRD-{epic}-v{X})
 **Wiki Meta:** [{Epic Name}](../../wiki/{Epic-Name})
+**Project Board:** [Board](https://github.com/{users|orgs}/{owner}/projects/{board_number})
 **Issues:** {story_count} stories, {task_count} tasks
 
 ### Dependency Graph

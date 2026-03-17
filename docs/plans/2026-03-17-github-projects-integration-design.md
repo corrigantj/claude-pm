@@ -73,7 +73,7 @@ project:
 
 New script: `scripts/preflight-checks/check-project.sh`
 
-Two checks:
+Three checks:
 
 1. **`project.exists`** — verify `board_number` is present in config. If absent, emit fail with fix suggestion to run `limbic:setup`. If present, verify the board exists and is linked to the repo via `gh project view`. If the board is missing or not linked, emit fail. Board setup is mandatory — all gated skills (structure, dispatch, review, integrate) require it.
 
@@ -223,6 +223,6 @@ The setup wizard provides the exact URL and step-by-step instructions. These onl
 | `skills/status/SKILL.md` | Show board URL in dashboard |
 | `templates/limbic.yaml` | Add `board_number` and `board_title` fields |
 | `scripts/preflight-checks/check-project.sh` | New preflight script |
-| `scripts/preflight-checks/runner.sh` | Add `run_check "project"` line |
+| `scripts/preflight-checks/runner.sh` | Add `run_check "project" "${SCRIPT_DIR}/check-project.sh"` |
 | `CLAUDE.md` | Update plugin structure and references |
 | `README.md` | Update documentation |

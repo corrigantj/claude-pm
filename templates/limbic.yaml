@@ -9,6 +9,8 @@ project:
   owner: ""        # GitHub org or username
   repo: ""         # Repository name
   base_branch: ""  # Default branch (auto-detected from HEAD)
+  board_number:    # GitHub Project number (populated by limbic:setup)
+  board_title: ""  # GitHub Project title (populated by limbic:setup)
 
 # ─── Agent execution ────────────────────────────────────────────────────────
 # Controls how implementer agents are spawned during dispatch.

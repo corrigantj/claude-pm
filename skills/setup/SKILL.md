@@ -58,14 +58,7 @@ Present recommended defaults section by section. For each section, show the defa
      base_branch: {detected}
    ```
 
-2. **Agent settings**
-   ```yaml
-   agents:
-     max_parallel: 3
-     model: opus
-   ```
-
-3. **Sizing buckets**
+2. **Sizing buckets**
    ```yaml
    sizing:
      metric: tokens
@@ -77,14 +70,14 @@ Present recommended defaults section by section. For each section, show the defa
        xl: { lower: 500000, upper: null, description: "Must be split" }
    ```
 
-4. **Wiki settings**
+3. **Wiki settings**
    ```yaml
    wiki:
      directory: .wiki
      auto_clone: true
    ```
 
-5. **Labels** — show the full default taxonomy:
+4. **Labels** — show the full default taxonomy:
    - Priority: critical, high, medium, low
    - Meta: ignore, mustread
    - Size: xs, s, m, l, xl
@@ -93,18 +86,26 @@ Present recommended defaults section by section. For each section, show the defa
    - Backlog: now, next, later, icebox
    - Ask: "Any custom labels to add?"
 
-6. **Approval gates**
+5. **Approval gates** — these control where limbic pauses to ask for your permission. Present as a checklist of plain-language descriptions (not raw YAML). Default is fully autonomous (no gates enabled):
+   - **Pause before dispatching agents** — ask before spawning implementation agents (default: off)
+   - **Pause before merging PRs** — ask before merging approved task PRs into the feature branch (default: off)
+   - **Pause before closing milestones** — ask before closing the milestone during integrate (default: off)
+   - **Pause before updating wiki** — ask before pushing changes to the project wiki (default: off)
+
+   Ask: "These are all off by default, meaning limbic will run autonomously. Want to enable any of these checkpoints?"
+
+   Map selections back to `approval_gates` keys in the generated YAML:
    ```yaml
    approval_gates:
-     before_dispatch: false
-     before_merge: false
-     before_close_milestone: false
-     before_wiki_update: false
+     before_dispatch: false      # "Pause before dispatching agents"
+     before_merge: false         # "Pause before merging PRs"
+     before_close_milestone: false  # "Pause before closing milestones"
+     before_wiki_update: false   # "Pause before updating wiki"
    ```
 
 Remaining config sections (`branches`, `worktrees`, `commands`, `epics`, `validation`, `review`) use sensible defaults and can be customized by editing `.github/limbic.yaml` directly after init completes.
 
-After all sections are confirmed, write `.github/limbic.yaml` and proceed to Step 5.
+After all sections are confirmed, write `.github/limbic.yaml` using the Write tool directly (do NOT run `mkdir` first — Write creates parent directories automatically, and a separate `mkdir` triggers an unnecessary permission prompt).
 
 ### Step 4: Preflight Path (Config Exists)
 
@@ -185,7 +186,7 @@ Re-run the preflight to confirm all checks now pass:
 {PLUGIN_ROOT}/scripts/preflight-checks/runner.sh
 ```
 
-- **All green:** "limbic is fully configured. You're ready to go."
+- **All green:** "limbic is fully configured. You're ready to go. Next step: describe what you want to build (routes to `superpowers:brainstorming` to create a PRD), or if you already have a PRD, run `/structure` to convert it into GitHub issues and a milestone."
 - **Still has failures:** Report remaining issues. If they're human-fixable, wait. If model-fixable items failed, investigate and retry (max 3 attempts).
 
 ## Important Rules

@@ -131,6 +131,32 @@ Present recommended defaults section by section. For each section, show the defa
      before_wiki_update: false   # "Pause before updating wiki"
    ```
 
+7. **Subagent permissions** — limbic agents need shell access to run git, tests, and linting.
+
+   Auto-detect the project's stack using the same heuristics as build command detection:
+   - Always include: `Bash(git:*)`, `Bash(gh:*)`
+   - `package.json` exists → add `Bash(npm:*)`, `Bash(npx:*)`, `Bash(node:*)`
+   - `Cargo.toml` exists → add `Bash(cargo:*)`
+   - `pyproject.toml` exists → add `Bash(python3:*)`, `Bash(pytest:*)`, `Bash(ruff:*)`
+   - `go.mod` exists → add `Bash(go:*)`
+   - `Makefile` exists → add `Bash(make:*)`
+
+   Present the proposed permissions:
+   ```
+   limbic agents need shell access to run git, tests, and linting in parallel.
+   Based on your project, here are the permissions I'd add to .claude/settings.json:
+
+     - Bash(git:*)
+     - Bash(gh:*)
+     - Bash(npm:*)       <- detected from package.json
+     - Bash(npx:*)
+     - Bash(node:*)
+
+   Looks good, or want to change anything?
+   ```
+
+   After confirmation, read `.claude/settings.json` if it exists, merge the new permissions into the `permissions.allow` array (preserving existing entries), and write it back using the Write tool.
+
 Remaining config sections (`branches`, `worktrees`, `commands`, `epics`, `validation`, `review`) use sensible defaults and can be customized by editing `.github/limbic.yaml` directly after setup completes.
 
 After all sections are confirmed, write `.github/limbic.yaml` using the Write tool directly (do NOT run `mkdir` first — Write creates parent directories automatically, and a separate `mkdir` triggers an unnecessary permission prompt).
@@ -201,6 +227,8 @@ Read each failed check's `fix` field. Decide per-check:
 - Deprecated `merge` key in config → suggest removing it: "The `merge` section is no longer used — merge strategy is now hardcoded. Remove the `merge:` block from your `.github/limbic.yaml`."
 - Missing board → create the board and link it to the repo using the commands from the wizard Section 2
 - Board not linked → run the `linkProjectV2ToRepository` GraphQL mutation
+- Missing .wiki/ in .gitignore → append `.wiki/` (or configured `wiki.directory` value) to `.gitignore`
+- Missing subagent permissions → read `.claude/settings.json`, merge required Bash permissions into `permissions.allow`, write back
 
 **Needs human action:**
 - Wiki not enabled → tell the user: "Wiki is not enabled. Enable it in repo Settings > General > Features > Wiki. Let me know when it's done and I'll re-check."

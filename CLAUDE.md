@@ -20,7 +20,8 @@ limbic/
 │       ├── check-repo.sh          # Wiki, Issue Types API, Sub-issues API
 │       ├── check-config.sh        # limbic.yaml existence and schema
 │       ├── check-labels.sh        # Label taxonomy matches config
-│       ├── check-wiki.sh          # Wiki clone, Home page, templates
+│       ├── check-wiki.sh          # Wiki clone, Home page, templates, .gitignore
+│       ├── check-permissions.sh   # Subagent Bash permissions in .claude/settings.json
 │       └── check-project.sh      # Project board existence, linkage, Status field
 ├── skills/                        # 6 skills: setup, structure, dispatch, status, review, integrate
 │   ├── setup/                     # Setup wizard, preflight runner, drift remediation
@@ -66,7 +67,7 @@ limbic:setup → .github/limbic.yaml + GitHub artifacts (labels, wiki, project b
 5. **Versioned epics** — lower-kebab-case naming: `{epic}-v{Major}.{Minor}`
 6. **PRD lifecycle** — Draft → In Review → Active → Approved → Superseded
 7. **Token-based sizing** — configurable buckets in `.github/limbic.yaml`, calibrated via retros
-8. **Each agent gets its own worktree** — branching from the feature branch, not main
+8. **Dispatch creates worktrees, agents validate** — worktrees branch from the feature branch, created by dispatch via `git -C {repo_root}`, validated by the implementer via `superpowers:using-git-worktrees`
 
 ## Prerequisites
 

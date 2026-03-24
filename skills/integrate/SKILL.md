@@ -49,6 +49,11 @@ Verify that wave 1 is complete — all task PRs should already be merged into th
 5. If any tasks are `status:in-progress`, `status:blocked`, or `status:ready`:
    - Report them and ask user how to proceed
    - Options: "Wait for completion", "Exclude from integration", "Cancel"
+6. Check for open stabilization children:
+   - Search for the stabilization ticket: `gh issue list --milestone "{milestone_title}" --search "\"Stabilization: {milestone_title}\" in:title" --json number --jq '.[0].number'`
+   - If a stabilization ticket exists, fetch its sub-issues (or issues with `<!-- limbic:parent #{stabilization_number} -->`)
+   - If any stabilization children are still open, report them as blockers
+   - Options: "Wait for stabilization to complete", "Exclude remaining issues", "Cancel"
 
 ```bash
 # Fetch open issues in milestone

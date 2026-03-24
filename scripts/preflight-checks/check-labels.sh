@@ -68,6 +68,12 @@ check_label "backlog:next"   "ededed" "Deliver next sprint"
 check_label "backlog:later"  "ededed" "Planned but not yet scheduled"
 check_label "backlog:icebox" "ededed" "Deprioritized indefinitely"
 
+# Severity labels
+check_label "severity:critical" "b60205" "Data loss, crash, or security vulnerability"
+check_label "severity:major"    "d93f0b" "Broken feature, no workaround"
+check_label "severity:minor"    "fbca04" "Broken feature, workaround exists"
+check_label "severity:trivial"  "0e8a16" "Cosmetic or minor inconvenience"
+
 # Custom labels from config
 if [ -f "$CONFIG_PATH" ] && command -v python3 &>/dev/null && python3 -c "import yaml" &>/dev/null; then
   custom_labels="$(python3 - "$CONFIG_PATH" <<'PYEOF'

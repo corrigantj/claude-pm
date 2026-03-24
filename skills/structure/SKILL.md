@@ -171,6 +171,22 @@ If a milestone with this title already exists, use it instead of creating a dupl
 
 Capture the milestone number from the response for use in subsequent steps.
 
+### Step 7a: Create Stabilization Ticket
+
+Create a stabilization ticket for the new milestone. This is the parent ticket for any issues discovered during testing, review, or post-integration stabilization.
+
+Run the creation script:
+
+    bash scripts/create-stabilization-ticket.sh \
+      --owner {owner} --repo {repo} \
+      --milestone-title "{epic}-v{Major}.{Minor}" \
+      --milestone-number {milestone_number} \
+      --wiki-meta-url "../../wiki/{Epic-Name}"
+
+The script is idempotent — if a stabilization ticket already exists for this milestone, it returns the existing issue number.
+
+The stabilization ticket is labeled `meta:ignore` so that `limbic:dispatch` will not attempt to dispatch it for implementation.
+
 ### Step 8: Create Feature Branch
 
 Create and push the feature branch from the configured base branch:

@@ -108,6 +108,16 @@ Output a formatted dashboard:
 
 {Repeat for each story. Tasks/bugs without a parent story are listed under an "Ungrouped Tasks" heading.}
 
+### Stabilization
+{If a stabilization ticket exists in the milestone (title matches "Stabilization: {milestone_title}"):}
+
+#### #{N}: Stabilization: {milestone_title} [`meta:ignore`]
+  - Bug  #{N}: {title} [`severity:major`] [`priority:high`] [`status:ready`]
+  - Task #{N}: {title} [`severity:minor`] [`priority:medium`] [`status:in-progress`]
+  - **Exit criteria:** {open_count}/{total_count} children remaining
+
+{Stabilization children are grouped here instead of under "Ungrouped Tasks". Display severity labels alongside status labels for all issues that have them.}
+
 ### CI Status (In-Review PRs)
 | Issue | PR | Base Branch | CI | Review |
 |-------|----|----|--------|--------|
@@ -144,6 +154,8 @@ Output a formatted dashboard:
 - {If tasks still in progress: "Wait for agents to complete, or check for blockers"}
 - {If issues ready: "Run `limbic:dispatch` to start next batch"}
 - {If blockers exist: "Resolve blocker on #{N}: {description}"}
+- {If stabilization ticket has open children: "Stabilization in progress — {open_count} issues remaining. Run `limbic:issue` to capture more issues or `limbic:issue fix #N` to fix them."}
+- {If stabilization ticket exists and all children closed: "Stabilization complete — all issues resolved. Safe to run `limbic:integrate`."}
 ```
 
 ## Session Recovery

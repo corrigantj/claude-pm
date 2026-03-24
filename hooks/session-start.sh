@@ -29,10 +29,13 @@ You have project management capabilities via the limbic plugin.
 | \"What's the status?\" | limbic:status |
 | \"Review PRs\" / \"Check feedback\" | limbic:review |
 | \"Merge\" / \"Ship it\" / \"Integrate\" | limbic:integrate |
+| \"File a bug\" / \"Report issue\" / \"Investigate\" | limbic:issue |
+| \"Fix issue #N\" | limbic:issue |
 
 ## Flow
 
 setup -> brainstorming -> structure -> dispatch -> status -> review -> integrate
+issue (can be invoked at any point in the lifecycle)
 
 ## Preflight
 

@@ -63,7 +63,7 @@ Extract from the human's description: what happened, what was expected, which ar
 
 **Phase 2: Detect Context**
 - Determine active milestone. If multiple open milestones, use the one matching any referenced issues. If none, the issue is milestone-less (standalone backlog item).
-- Auto-detect push access to base branch → vibe or PR mode. Store for the fix phase (if invoked later).
+- Auto-detect vibe vs PR mode: query the base branch's protection rules via `gh api repos/{owner}/{repo}/branches/{base}/protection`. If the branch requires PR reviews, use PR mode regardless of the user's push permissions. If no branch protection or no review requirement, check push access via `gh api repos/{owner}/{repo} --jq '.permissions.push'` — push access means vibe mode. Store the result for the fix phase (if invoked later).
 
 **Phase 3: Dedup Check**
 Two-pass duplicate detection against open issues in the milestone:
@@ -83,9 +83,10 @@ On uncertain match:
 If in stabilization context (human said "stabilization" or a stabilization ticket already exists for the milestone), look up the stabilization parent ticket. If somehow missing (should have been created at milestone creation time), flag an error. Otherwise, the issue is standalone in the milestone with no parent.
 
 **Phase 5: Create Issue**
-Minimal spike — fast capture before investigation begins:
+Minimal spike — fast capture before investigation begins. Uses the existing `skills/structure/bug-template.md` format for `type:bug` issues (Parent, Failing Scenario, Environment, Observed/Expected Behavior, Reproduction Steps, Fix Guidance). For `type:task` issues (enhancements/refactors), uses a lightweight format: Objective, Context, Affected Area.
+
 - Title: concise summary
-- Body: observed vs expected behavior, environment info, parent link (stabilization ticket if applicable, none otherwise)
+- Body: template-appropriate format with parent link (stabilization ticket if applicable, none otherwise)
 - Labels: `type:bug` or `type:task` (defect vs enhancement)
 - If in stabilization context: create as sub-issue of stabilization ticket (via GitHub Sub-issues API, falling back to `<!-- limbic:parent #N -->`)
 - If a related feature story is identifiable: include a URL link in the description for progressive context loading
@@ -148,24 +149,16 @@ result:
 
 ### 4. Label Taxonomy: Adding Severity
 
-New `severity:` label prefix added to `limbic.yaml` defaults:
+New `severity:` labels added to the hardcoded default taxonomy in `scripts/preflight-checks/check-labels.sh`, consistent with how existing taxonomy labels (`priority:`, `size:`, `status:`, `type:`, `backlog:`) are defined. The `labels:` key in `limbic.yaml` is reserved for user-defined custom labels and is not used for the default taxonomy.
 
-```yaml
-labels:
-  severity:
-    critical:
-      color: "b60205"
-      description: "Data loss, crash, or security vulnerability"
-    major:
-      color: "d93f0b"
-      description: "Broken feature, no workaround"
-    minor:
-      color: "fbca04"
-      description: "Broken feature, workaround exists"
-    trivial:
-      color: "0e8a16"
-      description: "Cosmetic or minor inconvenience"
-```
+New severity labels:
+
+| Label | Color | Description |
+|-------|-------|-------------|
+| `severity:critical` | `b60205` (red) | Data loss, crash, or security vulnerability |
+| `severity:major` | `d93f0b` (orange) | Broken feature, no workaround |
+| `severity:minor` | `fbca04` (yellow) | Broken feature, workaround exists |
+| `severity:trivial` | `0e8a16` (green) | Cosmetic or minor inconvenience |
 
 Existing `priority:` labels unchanged.
 
@@ -177,6 +170,7 @@ A stabilization ticket is created deterministically at milestone creation time, 
 - Called by `limbic:structure` after milestone creation
 - Creates a `type:task` issue titled "Stabilization: {epic}-v{Major}.{Minor}"
 - Assigned to the milestone
+- Labeled with `meta:ignore` to prevent `limbic:dispatch` from picking it up as a dispatchable task
 - Body contains a link to the feature's wiki meta page
 - Idempotent — if one already exists for this milestone, no-op
 
@@ -194,7 +188,7 @@ A stabilization ticket is created deterministically at milestone creation time, 
 
 ### 6. Integration with Existing Skills
 
-**`limbic:structure`** — After creating the milestone (existing step 5), call `create-stabilization-ticket.sh`. No other changes.
+**`limbic:structure`** — After Step 7 (Create Milestone), add a new sub-step (7a) with instructions to create the stabilization ticket by running `create-stabilization-ticket.sh` or creating the ticket via `gh` directly, consistent with how the rest of the structure skill operates. No other changes.
 
 **`limbic:status`** — Shows the stabilization ticket with its children in the dashboard, same grouping pattern as stories with tasks. Includes severity labels in display.
 
@@ -217,26 +211,28 @@ limbic/
 ├── skills/
 │   └── issue/
 │       ├── SKILL.md                # Thin dispatcher: capture input, spawn agent, handle approval
-│       └── investigator-prompt.md  # Template filled before spawning agent
+│       └── investigator-prompt.md  # Dynamic context template filled by the skill before spawning
 ├── agents/
-│   └── investigator.md             # Subagent: 10-phase spike → investigate → recommend
+│   └── investigator.md             # Static agent definition: persona, phases, rules
 ├── scripts/
 │   ├── create-stabilization-ticket.sh  # Called by structure at milestone creation
 │   └── preflight-checks/
 │       └── check-stabilization.sh      # Verify stabilization tickets exist
 ```
 
+The relationship between `investigator-prompt.md` and `agents/investigator.md` mirrors the existing `dispatch/implementer-prompt.md` and `agents/implementer.md` pattern: the agent file defines the static persona, rules, and execution phases; the prompt template is filled by the skill with dynamic context (human description, repo info, milestone data) and injected into the agent spawn call.
+
+**Migration note:** Existing milestones (created before this feature) will not have stabilization tickets. The `check-stabilization.sh` preflight check will flag these as warnings. Running `limbic:setup` will remediate by backfilling stabilization tickets for any open milestones missing them.
+
 Changes to existing files:
 
 | File | Change |
 |------|--------|
-| `templates/limbic.yaml` | Add `severity:` label definitions |
+| `scripts/preflight-checks/check-labels.sh` | Add `severity:` labels to hardcoded default taxonomy |
 | `scripts/preflight-checks/runner.sh` | Include `check-stabilization.sh` |
-| `scripts/preflight-checks/check-labels.sh` | Verify severity labels exist |
-| `skills/structure/SKILL.md` | Call `create-stabilization-ticket.sh` after milestone creation |
-| `skills/integrate/SKILL.md` | Check stabilization ticket children in pre-integration audit |
-| `.claude-plugin/plugin.json` | Register new skill |
-| `hooks/session-start.sh` | Add `/issue` to routing table |
+| `skills/structure/SKILL.md` | Add Step 7a: create stabilization ticket after milestone creation |
+| `skills/integrate/SKILL.md` | Add stabilization ticket children check to pre-integration audit (Step 1) |
+| `hooks/session-start.sh` | Add `/issue` routing: `"File a bug" / "Report issue" / "Investigate" / "Fix issue"` → `limbic:issue` |
 | `CLAUDE.md` | Update plugin structure and skill reference table |
 
 ### 8. Procedural Context: Stabilization Loop

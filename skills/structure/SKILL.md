@@ -22,7 +22,8 @@ You MUST create a task for each of these items and complete them in order:
 4. **Create epic label and milestone** — per-epic label, milestone with PRD link (Steps 6-7)
 5. **Create feature branch** — branch from base branch and push (Step 8)
 6. **Create stories and tasks** — stories with BDD scenarios, dev tasks as sub-issues, dependency annotations, add all to project board (Steps 9-11a)
-7. **Validate and finalize** — post-creation validation, update PRD status to Active, present summary (Steps 12-14)
+7. **Promote backlog items** — check for backlog items that map to new stories, offer batch promotion (Step 11b)
+8. **Validate and finalize** — post-creation validation, update PRD status to Active, present summary (Steps 12-14)
 
 ## Process
 
@@ -278,6 +279,77 @@ gh project item-add {board_number} --owner {owner} --url https://github.com/{own
 If an individual `item-add` fails (rate limit, transient error), log a warning and continue with remaining issues. Do not fail the entire structure run — issues and milestone are the critical artifacts, the board is supplementary.
 
 The "Item added to project" workflow automation automatically sets the board Status to Ready.
+
+### Step 11b: Promote Backlog Items
+
+After all stories and tasks are created and added to the board, check for existing backlog items that may now be covered by the new milestone.
+
+**11b-1. Fetch open backlog items:**
+
+Query each tier separately (gh `--label` does AND matching):
+```bash
+backlog_items=""
+for tier in now next later icebox; do
+  items=$(gh issue list --repo {owner}/{repo} --label "backlog:${tier}" \
+    --state open --json number,title,labels --limit 1000 2>/dev/null || echo "[]")
+  backlog_items="${backlog_items}${items}"
+done
+```
+
+Merge results and deduplicate by issue number.
+
+If no backlog items exist, skip this step entirely and proceed to Step 12.
+
+**11b-2. Match against new stories/tasks:**
+
+Compare backlog item titles against the titles of stories and tasks just created in Steps 9-10. Look for conceptual matches: same feature area, overlapping keywords, related functionality.
+
+If no matches are found, skip to Step 12.
+
+**11b-3. Present matches for user approval:**
+
+```
+These backlog items appear to map to new stories:
+  #{old_number} "{old_title}" → Story #{new_number} "{new_title}"
+  #{old_number} "{old_title}" → Story #{new_number} "{new_title}"
+
+Promote all, select individually, or skip?
+```
+
+- **Promote all:** process the entire batch in one go
+- **Select individually:** let the user pick which items to promote
+- **Skip:** leave all backlog items as-is, proceed to Step 12
+
+**11b-4. Execute promotion (per item):**
+
+For each promoted backlog item:
+
+1. Append to the **new issue** body:
+   ```bash
+   # Get existing body, append supersedes line
+   existing_body=$(gh issue view {new_number} --repo {owner}/{repo} --json body --jq '.body')
+   gh issue edit {new_number} --repo {owner}/{repo} \
+     --body "${existing_body}
+
+   Supersedes backlog item #{old_number}"
+   ```
+
+2. Comment on the **backlog issue**:
+   ```bash
+   gh issue comment {old_number} --repo {owner}/{repo} \
+     --body "Promoted to #{new_number} in milestone {milestone_title}"
+   ```
+
+3. Remove the `backlog:*` label:
+   ```bash
+   gh issue edit {old_number} --repo {owner}/{repo} \
+     --remove-label "backlog:now,backlog:next,backlog:later,backlog:icebox"
+   ```
+
+4. Close the backlog issue:
+   ```bash
+   gh issue close {old_number} --repo {owner}/{repo} --reason completed
+   ```
 
 ### Step 12: Post-Creation Validation
 

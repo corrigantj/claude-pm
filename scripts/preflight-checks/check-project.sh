@@ -47,6 +47,8 @@ fi
 emit "project.exists" "pass" "Project board #${board_number} exists"
 
 # project.linked — verify repo is linked to the project
+# Query user first, then org. Separate assignments because gh api graphql
+# exits 0 even on GraphQL errors (HTTP 200), so || chaining doesn't work.
 linked_repos=$(gh api graphql -f query="
   query {
     user(login: \"${OWNER}\") {
@@ -57,18 +59,20 @@ linked_repos=$(gh api graphql -f query="
       }
     }
   }
-" --jq '.data.user.projectV2.repositories.nodes[].name' 2>/dev/null || \
-gh api graphql -f query="
-  query {
-    organization(login: \"${OWNER}\") {
-      projectV2(number: ${board_number}) {
-        repositories(first: 50) {
-          nodes { name }
+" --jq '.data.user.projectV2.repositories.nodes[].name // empty' 2>/dev/null)
+if [ -z "$linked_repos" ]; then
+  linked_repos=$(gh api graphql -f query="
+    query {
+      organization(login: \"${OWNER}\") {
+        projectV2(number: ${board_number}) {
+          repositories(first: 50) {
+            nodes { name }
+          }
         }
       }
     }
-  }
-" --jq '.data.organization.projectV2.repositories.nodes[].name' 2>/dev/null || echo "")
+  " --jq '.data.organization.projectV2.repositories.nodes[].name // empty' 2>/dev/null)
+fi
 
 if echo "$linked_repos" | grep -qx "${REPO}"; then
   emit "project.linked" "pass" "Project board is linked to ${OWNER}/${REPO}"

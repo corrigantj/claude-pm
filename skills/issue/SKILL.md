@@ -1,30 +1,36 @@
 ---
 name: issue
-description: Use when reporting a bug, filing an issue, investigating a problem, fixing an already-investigated issue, or quickly capturing a backlog idea — supports ad-hoc issue creation, duplicate detection, root-cause investigation, severity/priority recommendation, stabilization tracking, and lightweight backlog capture
+description: Use when reporting a bug, filing an issue, investigating a problem, fixing an already-investigated issue, or quickly capturing a backlog idea — supports fast ad-hoc issue capture with an explicit gate before investigation, duplicate detection, root-cause investigation, severity/priority recommendation, stabilization tracking, and lightweight backlog capture
 ---
 
-# issue — Ad-hoc Issue Creation, Investigation, and Triage
+# issue — Ad-hoc Issue Capture, Investigation, and Triage
 
 **Type:** Rigid. Follow this process exactly.
+
+## Design Principle: Capture Is Fast, Investigation Is Gated
+
+`/issue` is usually invoked mid-session while the user is doing other work. Submission must be fast — **parse, dedup, create, report**, then stop. Investigation is expensive and must never run until the user explicitly asks for it via the `AskUserQuestion` gate in Step 5.
+
+**Never** spawn the investigator agent before Step 5. **Never** run systematic debugging during capture.
 
 ## Invocation Modes
 
 This skill has three modes:
 
-1. **Investigate** (default) — `/issue {description}`
-   Human describes a bug, enhancement, or problem. The skill spawns an investigator agent.
+1. **Capture** (default) — `/issue {description}`
+   Human describes a bug, enhancement, or problem. The skill captures it as a GitHub issue fast, then asks the user whether to enrich with a description, run an investigation, both, or stop.
 
 2. **Fix** — `/issue fix #{issue_number}`
-   For an already-investigated issue. The skill spawns a fix agent.
+   For an already-investigated issue. The skill executes a TDD fix.
 
 3. **Backlog** — `/issue backlog "idea title"` or `/issue backlog {tier} "idea title"`
-   Quick capture of a backlog idea. No investigation, no milestone. Tier is `now`, `next`, `later` (default), or `icebox`.
+   Quick capture of a backlog idea with an explicit tier. No milestone, no investigation option, no dedup. Tier is `now`, `next`, `later` (default), or `icebox`.
 
-## Mode 1: Investigate
+## Mode 1: Capture
 
 ### Inputs
 
-- A human's description of an issue (bug, enhancement, or problem)
+- A human's brief description of an issue (bug, enhancement, or problem)
 - Access to the project repository (gh CLI)
 
 ### Checklist
@@ -32,8 +38,11 @@ This skill has three modes:
 You MUST create a task for each of these items and complete them in order:
 
 1. **Gather context** — read limbic.yaml, detect milestones, read preflight capability flags (Step 1)
-2. **Fill prompt and spawn investigator** — fill the investigator-prompt.md template and spawn the agent (Step 2)
-3. **Handle result** — process the agent's structured result, handle approval if interactive (Step 3)
+2. **Parse intent** — extract title, type (bug vs task), milestone, stabilization context (Step 2)
+3. **Quick dedup check** — search for obvious duplicates (Step 3)
+4. **Create issue** — fast create with placeholder body (Step 4)
+5. **Gate** — ask the user what to do next via `AskUserQuestion` (Step 5)
+6. **Handle response** — description / investigation / both / done (Step 6)
 
 ### Process
 
@@ -42,7 +51,7 @@ You MUST create a task for each of these items and complete them in order:
 Read `.github/limbic.yaml` from the project root. Extract:
 - `owner` and `repo` from git remote
 - `base_branch` (default: `main`)
-- Build commands: `test_command`, `lint_command`, `build_command`
+- Build commands: `test_command`, `lint_command`, `build_command` (needed later if investigation is chosen)
 
 Fetch open milestones:
 ```bash
@@ -53,33 +62,151 @@ Read preflight capability flags from the PreToolUse hook's additionalContext (JS
 - `repo.issue_types` — pass/fail
 - `repo.sub_issues` — pass/fail
 
-#### Step 2: Fill Prompt and Spawn Investigator
+#### Step 2: Parse Intent
 
-1. Read `skills/issue/investigator-prompt.md`
-2. Replace all `{placeholders}` with values from Step 1 and the human's description
-3. Set `{interactive_flag}` to `true` (human is present in the conversation)
-4. Spawn the investigator agent:
+From the human's description, extract **without invoking any agent**:
+
+1. **Concise title** — one-line summary suitable for a GitHub issue title
+2. **Type signal** — `type:bug` if the description mentions broken/crash/error/failing behavior; `type:task` if it's an enhancement, refactor, or improvement. Default to `type:bug` if ambiguous.
+3. **Milestone** —
+   - If the human referenced specific issues (`#N`), find which milestone they belong to.
+   - If only one open milestone exists, use it.
+   - If multiple open milestones and no clear match, use the most recently created one.
+   - If no open milestones, the issue is milestone-less (standalone backlog item).
+4. **Stabilization context** —
+   - Check if the description contains "stabilization" or "stabilize"
+   - Check if a stabilization ticket exists for the active milestone:
+     ```bash
+     gh issue list --repo {owner}/{repo} --milestone "{milestone_title}" \
+       --search "\"Stabilization: {milestone_title}\" in:title" \
+       --json number,title --jq '.[0].number'
+     ```
+   - If either is true → stabilization context; record the stabilization ticket number as the parent.
+   - Otherwise → standalone issue, no parent.
+
+Keep this step cheap — no file reads, no code search, no debugging. You are only parsing the human's text plus a couple of gh API calls.
+
+#### Step 3: Quick Dedup Check
+
+Do a single fast search — do NOT invoke an agent and do NOT read candidate issue bodies in depth.
+
+```bash
+gh issue list --repo {owner}/{repo} --state open \
+  --search "{keywords from title}" \
+  --json number,title --limit 5
+```
+
+- **If no plausible match** → proceed to Step 4.
+- **If an obvious match exists** (near-identical title, same component) → present the candidate to the human:
+  > "This looks similar to #{N} — {title}. Attach your context as a comment on that issue instead? (yes / no — create a new one)"
+  - On `yes`: `gh issue comment {N} --body "{human description}"` and stop. Report `Added context to #{N}`.
+  - On `no`: proceed to Step 4.
+
+#### Step 4: Create Issue
+
+Create the GitHub Issue with a placeholder body. This is a fast capture — do not enrich yet.
+
+For `type:bug`:
+```bash
+gh issue create --repo {owner}/{repo} \
+  --title "{concise_title}" \
+  --milestone "{milestone_title}" \
+  --label "type:bug" \
+  --body "$(cat <<'BODY'
+**Parent:** #{stabilization_ticket_number_or_parent_story_or_none}
+
+## Initial Report
+
+{human description — verbatim}
+
+## Fix Guidance
+
+<!-- Investigation pending — run `/issue` investigation gate to populate -->
+BODY
+)"
+```
+
+For `type:task`:
+```bash
+gh issue create --repo {owner}/{repo} \
+  --title "{concise_title}" \
+  --milestone "{milestone_title}" \
+  --label "type:task" \
+  --body "$(cat <<'BODY'
+## Objective
+
+{one sentence derived from the human's description}
+
+## Initial Report
+
+{human description — verbatim}
+
+## Investigation
+
+<!-- Investigation pending — run `/issue` investigation gate to populate -->
+BODY
+)"
+```
+
+If in stabilization context, link as sub-issue of the stabilization ticket:
+```bash
+# If Sub-issues API available:
+gh api graphql -f query='mutation { addSubIssue(input: {issueId: "{stabilization_ticket_node_id}", subIssueId: "{new_issue_node_id}"}) { issue { id } } }'
+# Fallback: include <!-- limbic:parent #{stabilization_ticket_number} --> in the body
+```
+
+Capture the new issue number. Report to the human in one line:
+> `Captured #{issue_number}: {title}` (milestone: {milestone_title or "none"}, type: {type})
+
+#### Step 5: Gate — AskUserQuestion
+
+This is the hard gate. Invoke `AskUserQuestion` **exactly once** with these options:
 
 ```
-Agent tool:
-  subagent_type: "limbic:investigator"
-  prompt: {filled_prompt}
+questions:
+  - question: "Issue #{issue_number} is captured. What would you like to do next?"
+    header: "Next step"
+    multiSelect: false
+    options:
+      - label: "Add description"
+        description: "I'll ask you for details and update the issue body. No investigation."
+      - label: "Run investigation"
+        description: "Spawn the investigator agent to find root cause and recommend severity/priority."
+      - label: "Both"
+        description: "Add a description first, then run the investigation."
+      - label: "Done — leave as-is"
+        description: "Keep the fast-capture body. You can run investigation later with `/issue` on the same description."
 ```
 
-Wait for the agent to return.
+**Do not proceed past this gate without a user selection.** Do not spawn the investigator unless the user chose "Run investigation" or "Both".
 
-#### Step 3: Handle Result
+#### Step 6: Handle Response
 
-Parse the agent's structured YAML result.
+**If "Done — leave as-is":**
+- Stop. The issue stands with its fast-capture body. Done.
 
-**If `status: duplicate`:**
-- Report to the human: "This looks like a duplicate of #{duplicate_of}. I added your context as a comment on the existing issue."
+**If "Add description":**
+- Ask the human: "Share any detail you want in the body." Wait for their reply.
+- Update the issue body, preserving the existing structure:
+  ```bash
+  gh issue edit {issue_number} --repo {owner}/{repo} --body "{updated_body}"
+  ```
 - Done.
 
-**If `status: created` (interactive):**
-- Present the investigation summary:
+**If "Run investigation":**
+- Read `skills/issue/investigator-prompt.md`
+- Replace all `{placeholders}` with values from Steps 1–4, including `{issue_number}`, `{issue_title}`, `{issue_type}`, and `{milestone_title}`
+- Set `{interactive_flag}` to `true`
+- Spawn the investigator agent:
   ```
-  Issue #{issue_number} created and investigated.
+  Agent tool:
+    subagent_type: "limbic:investigator"
+    prompt: {filled_prompt}
+  ```
+- Wait for the agent to return. Parse its structured YAML result.
+- Present the recommendation to the human:
+  ```
+  Investigation complete for #{issue_number}.
 
   Recommended severity: {severity_recommendation}
   Recommended priority: {priority_recommendation}
@@ -94,9 +221,19 @@ Parse the agent's structured YAML result.
 - On approval: apply labels via `gh issue edit --add-label`
 - On override: apply the human's chosen labels
 - On skip: leave unlabeled
+- Done.
 
-**If `status: created` (programmatic — this path is for when other skills invoke /issue):**
-- Labels already applied by the agent. Return the result silently.
+**If "Both":**
+- Run the "Add description" flow first (ask, update body).
+- Then run the "Run investigation" flow (spawn agent, present recommendation, apply labels).
+- Done.
+
+### What Mode 1 Does NOT Do
+
+- Does **not** spawn the investigator before Step 5
+- Does **not** run systematic debugging during capture
+- Does **not** read code or files during Steps 1–4 (just the human's text plus gh API calls)
+- Does **not** assume the user wants investigation — that decision belongs to the gate
 
 ## Mode 2: Fix
 
@@ -119,7 +256,7 @@ Parse the agent's structured YAML result.
 gh issue view {issue_number} --repo {owner}/{repo} --json body,title,labels,milestone
 ```
 
-Verify the issue has investigation findings (Fix Guidance or Investigation section populated, not the `<!-- Investigation pending -->` placeholder). If not investigated yet, tell the human: "This issue hasn't been investigated yet. Run `/issue {description}` first or manually add investigation findings to the issue body."
+Verify the issue has investigation findings (Fix Guidance or Investigation section populated, not the `<!-- Investigation pending -->` placeholder). If not investigated yet, tell the human: "This issue hasn't been investigated yet. Run `/issue` on the same description and choose 'Run investigation' at the gate, or manually add investigation findings to the issue body."
 
 Extract: root cause, affected files, proposed fix approach, severity, priority.
 
@@ -245,3 +382,4 @@ Ask the user: "Want to add any detail to the description for later?"
 - No stabilization ticket association
 - No milestone assignment
 - No agent spawning
+- No `AskUserQuestion` gate (backlog mode is already fast-capture by contract)

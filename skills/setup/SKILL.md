@@ -72,7 +72,20 @@ Present recommended defaults section by section. For each section, show the defa
        ```
      - Store `board_number` and `board_title` in config
    - Determine owner type for URL: `gh api users/{owner} --jq '.type'` (returns "User" or "Organization")
-   - Present workflow automation guide:
+   - Present **Status field update** guide first (workflows reference statuses that must exist before automations can be configured):
+     > "First, update the board's Status field options. Open this URL:"
+     > `https://github.com/{users|orgs}/{owner}/projects/{number}/settings/fields`
+     >
+     > Edit the **Status** field and ensure these options exist (rename or add as needed):
+     > - **Ready**
+     > - **In Progress**
+     > - **In Review**
+     > - **Blocked**
+     > - **Done**
+     >
+     > Let me know when you've updated the Status field.
+   - Wait for user confirmation that the Status field is updated.
+   - Then present **workflow automation** guide (now that the referenced statuses exist):
      > "Now configure the board's automation. Open this URL:"
      > `https://github.com/{users|orgs}/{owner}/projects/{number}/settings/workflows`
      >
@@ -135,7 +148,7 @@ Present recommended defaults section by section. For each section, show the defa
 7. **Subagent permissions** — limbic agents need shell access to run git, tests, and linting.
 
    Auto-detect the project's stack using the same heuristics as build command detection:
-   - Always include: `Bash(git:*)`, `Bash(gh:*)`
+   - Always include: `Bash(git:*)`, `Bash(gh:*)`, `Bash(gh issue *)`
    - `package.json` exists → add `Bash(npm:*)`, `Bash(npx:*)`, `Bash(node:*)`
    - `Cargo.toml` exists → add `Bash(cargo:*)`
    - `pyproject.toml` exists → add `Bash(python3:*)`, `Bash(pytest:*)`, `Bash(ruff:*)`
@@ -149,6 +162,7 @@ Present recommended defaults section by section. For each section, show the defa
 
      - Bash(git:*)
      - Bash(gh:*)
+     - Bash(gh issue *)
      - Bash(npm:*)       <- detected from package.json
      - Bash(npx:*)
      - Bash(node:*)

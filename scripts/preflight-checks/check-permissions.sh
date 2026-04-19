@@ -36,18 +36,25 @@ if [ -z "$allow_list" ]; then
   exit 0
 fi
 
-# Check for minimum required: git and gh
-missing=""
-for required in "git" "gh"; do
-  if ! echo "$allow_list" | grep -qE "Bash\(${required}[: ]"; then
-    missing="${missing}${required}, "
-  fi
-done
+# Check for minimum required: git, gh, and gh issue
+missing=()
 
-if [ -z "$missing" ]; then
-  emit "permissions.bash_access" "pass" "Bash permissions configured for subagents (git, gh found)"
+if ! echo "$allow_list" | grep -qE "Bash\(git[: ]"; then
+  missing+=("Bash(git:*)")
+fi
+
+if ! echo "$allow_list" | grep -qE "Bash\(gh[: ]"; then
+  missing+=("Bash(gh:*)")
+fi
+
+if ! echo "$allow_list" | grep -qE "Bash\(gh issue "; then
+  missing+=("Bash(gh issue *)")
+fi
+
+if [ ${#missing[@]} -eq 0 ]; then
+  emit "permissions.bash_access" "pass" "Bash permissions configured for subagents (git, gh, gh issue found)"
 else
-  missing="${missing%, }"
-  emit "permissions.bash_access" "fail" "Missing Bash permissions for subagents: ${missing}" \
-    "Run limbic:setup to configure subagent permissions — agents need at minimum Bash(git:*) and Bash(gh:*)"
+  missing_str=$(IFS=", "; echo "${missing[*]}")
+  emit "permissions.bash_access" "fail" "Missing Bash permissions for subagents: ${missing_str}" \
+    "Run limbic:setup to configure subagent permissions — agents need at minimum Bash(git:*), Bash(gh:*), and Bash(gh issue *)"
 fi
